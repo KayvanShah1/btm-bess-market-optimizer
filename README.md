@@ -1,2 +1,2 @@
-# btm-bess-market-optimizer
-Battery dispatch and market-stacking optimizer for C&amp;I BESS assets, comparing FCR-only and FCR+mFRR schedules with savings-first constraints and activation uncertainty.
+# Behind-the-meter BESS Market Optimizer: FCR-N vs mFRR Commitment Under Local Savings Constraints
+Scenario-based optimizer for allocating a behind-the-meter battery across local savings, FCR-N, and mFRR under SOC, peak-shaving, and uncertainty constraints.

@@ -66,17 +66,6 @@ class ProcessedDatasetConfig(BaseModel):
         zone = self.bidding_zone.lower()
         return f"representative_day_hourly_{zone}_{self.date_slug}.csv"
 
-    @property
-    def source_files(self) -> dict[str, str]:
-        return {
-            "source_load": self.load_file,
-            "source_pv": self.pv_file,
-            "source_spot": self.spot_nordpool_file,
-            "source_fcr": self.fcr_file,
-            "source_mfrr_cm": self.mfrr_capacity_file,
-            "source_mfrr_eam": self.mfrr_activation_file,
-        }
-
 
 CONFIG = ProcessedDatasetConfig()
 console = Console()
@@ -405,10 +394,6 @@ def repeat_hourly_to_15min(
 ##################################################
 
 
-def build_source_columns(config: ProcessedDatasetConfig) -> list[pl.Expr]:
-    return [pl.lit(filename).alias(column) for column, filename in config.source_files.items()]
-
-
 def build_15min_processed(config: ProcessedDatasetConfig, index: pl.DataFrame) -> pl.DataFrame:
     parts = [
         load_site_load_15min(config, index),
@@ -424,12 +409,7 @@ def build_15min_processed(config: ProcessedDatasetConfig, index: pl.DataFrame) -
         df = df.join(part, on="timestamp", how="left")
 
     return (
-        df.with_columns(
-            [
-                (pl.col("site_load_kw") - pl.col("site_pv_kw")).alias("net_load_kw"),
-                *build_source_columns(config),
-            ]
-        )
+        df.with_columns((pl.col("site_load_kw") - pl.col("site_pv_kw")).alias("net_load_kw"))
         .select(
             [
                 "timestamp",
@@ -448,12 +428,6 @@ def build_15min_processed(config: ProcessedDatasetConfig, index: pl.DataFrame) -
                 "mfrr_activation_energy_price_eur_mwh",
                 "mfrr_activation_volume_mw",
                 "mfrr_activation_flag",
-                "source_load",
-                "source_pv",
-                "source_spot",
-                "source_fcr",
-                "source_mfrr_cm",
-                "source_mfrr_eam",
             ]
         )
         .sort("timestamp")

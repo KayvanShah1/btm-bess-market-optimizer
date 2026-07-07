@@ -1,0 +1,24 @@
+[project]
+name = "bess-dashboard"
+version = "0.1.0"
+description = "Streamlit dashboard for the behind-the-meter BESS market optimizer."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "bess-optimizer",
+    "plotly>=5.24.1",
+    "streamlit>=1.41.0",
+]
+
+[project.scripts]
+bess-dashboard = "bess_dashboard.__main__:main"
+
+[tool.uv.sources]
+bess-optimizer = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/bess_dashboard"]

@@ -8,7 +8,7 @@ license = { file = "LICENSE" }
 dependencies = ["rich"]
 
 [tool.uv.workspace]
-members = ["bess_optimizer"]
+members = ["bess_optimizer", "apps/dashboard"]
 
 [dependency-groups]
 dev = ["ipykernel>=7.1.0", "pytest>=9.0.0", "ruff>=0.14.9"]

@@ -5,10 +5,10 @@ description = "Scenario-based optimizer for allocating a behind-the-meter batter
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
-dependencies = []
+dependencies = ["rich"]
 
 [tool.uv.workspace]
-members = ["bess_optmizer"]
+members = ["bess_optimizer"]
 
 [dependency-groups]
 dev = ["ipykernel>=7.1.0", "pytest>=9.0.0", "ruff>=0.14.9"]

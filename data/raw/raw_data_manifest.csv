@@ -1,0 +1,12 @@
+filename,previous_filename,source,model_use,status,included,size_kb
+esett_load_profile_20260624.csv,svk_load_profile_20260624.csv,eSett Open Data,Public Nordic load-shape proxy; use only if scaling public system-level load into a representative C&I profile.,core_or_reference,True,4.6
+esett_consumption_profile_20260624.csv,svk_consumption_profile_20260624.csv,eSett Open Data,System-level consumption context / validation only; not direct customer-meter data.,reference,True,8.8
+esett_production_profile_20260624.csv,svk_production_profile_20260624.csv,eSett Open Data,Production profile; solar column can be normalized as a PV-shape proxy.,core_or_reference,True,13.7
+esett_imbalance_prices_20260624.csv,svk_imbalance_prices_20260624.csv,eSett Open Data,Imbalance/regulation-price context; optional cross-check for activation value assumptions.,reference,True,27.1
+mimer_fcr_capacity_market_20260624.csv,svk_fcr_capacity_market_20260624.csv,Svenska Kraftnät Mimer,FCR-N capacity price for the FCR-only baseline.,core,True,6.4
+mimer_mfrr_capacity_market_d1_20260624.csv,svk_mfrr_capacity_market_d1_20260624.csv,Svenska Kraftnät Mimer,mFRR capacity-market D-1 price and volume; core mFRR capacity-revenue input.,core,True,5.2
+mimer_mfrr_energy_activation_market_20260624.csv,svk_mfrr_energy_activation_market_20260624.csv,Svenska Kraftnät Mimer,mFRR energy activation price and activation volume/flag.,core,True,23.0
+mimer_afrr_capacity_market_20260624_optional.csv,svk_afrr_capacity_market_20260624_optional.csv,Svenska Kraftnät Mimer,Optional downloaded reference only. aFRR is outside the assignment scope.,optional_not_used,True,4.7
+svk_day_ahead_area_prices_20260624.csv,svk_day_ahead_area_prices_20260624.csv,Svenska Kraftnät Open Data,"Day-ahead area price / spot-price input for local arbitrage, if used.",optional_core,True,24.7
+nordpool_day_ahead_prices_pasted_20260624.csv,nordpool_day_ahead_prices_pasted_20260624.csv,Nord Pool,Nord Pool day-ahead spot prices parsed from pasted table; use as spot-price reference or primary spot input.,optional_core,True,5.6
+synthetic_representative_swedish_ci_load_profiles_hourly.csv,representative_swedish_ci_load_profiles_hourly.csv,Synthetic representative C&I scenarios,Primary recommended load scenario: light_factory_one_shift_kw.,core_synthetic,True,1.2

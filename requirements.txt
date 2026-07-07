@@ -1,0 +1,2 @@
+-e ./bess_optimizer
+-e ./apps/dashboard

@@ -1,23 +1,34 @@
+import os
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 def find_project_root(
-    markers: tuple[str, ...] = (".git", ".env"),
+    markers: tuple[str, ...] = ("data", ".git", ".env"),
 ) -> Path:
     """
     Search upwards from the current file's directory to find the project root.
 
-    This avoids fragile Path.parents[n] assumptions when files are moved.
+    This avoids fragile Path.parents[n] assumptions when files are moved, and
+    keeps deployed app installs from resolving data paths inside site-packages.
     """
-    current = Path(__file__).resolve().parent
+    env_root = os.getenv("BESS_PROJECT_ROOT")
+    if env_root:
+        return Path(env_root).expanduser().resolve()
 
-    for parent in [current] + list(current.parents):
-        if any((parent / marker).exists() for marker in markers):
-            return parent
+    seen: set[Path] = set()
+    starts = (Path.cwd().resolve(), Path(__file__).resolve().parent)
 
-    return current.parent
+    for start in starts:
+        for parent in [start] + list(start.parents):
+            if parent in seen:
+                continue
+            seen.add(parent)
+            if any((parent / marker).exists() for marker in markers):
+                return parent
+
+    return Path.cwd().resolve()
 
 
 PROJECT_ROOT = find_project_root()

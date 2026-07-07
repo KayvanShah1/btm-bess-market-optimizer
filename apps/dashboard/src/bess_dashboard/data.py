@@ -13,6 +13,12 @@ DATASET_FILES: dict[DatasetGrain, str] = {
     "15min": "representative_day_15min_se3_20260624.csv",
 }
 
+MODEL_OUTPUT_FILES = {
+    "dispatch": "part_a_dispatch_hourly_se3_20260624.csv",
+    "summary": "part_a_scenario_summary_se3_20260624.csv",
+    "audit": "part_a_constraint_audit_se3_20260624.csv",
+}
+
 
 @st.cache_data(show_spinner=False)
 def load_processed_dataset(grain: DatasetGrain) -> pl.DataFrame:
@@ -41,3 +47,30 @@ def summarize_data_tab(df: pl.DataFrame) -> dict[str, float | int | str]:
         "avg_mfrr_capacity_price": float(df["mfrr_capacity_price_eur_mw_h"].mean()),
         "activation_probability": float(activation_probability or 0.0),
     }
+
+
+@st.cache_data(show_spinner=False)
+def load_dispatch_output() -> pl.DataFrame:
+    path = settings.output_dir / MODEL_OUTPUT_FILES["dispatch"]
+    if not path.exists():
+        raise FileNotFoundError(f"Part A dispatch output not found: {path}")
+
+    return pl.read_csv(path, try_parse_dates=True).sort(["scenario", "timestamp"])
+
+
+@st.cache_data(show_spinner=False)
+def load_scenario_summary() -> pl.DataFrame:
+    path = settings.output_dir / MODEL_OUTPUT_FILES["summary"]
+    if not path.exists():
+        raise FileNotFoundError(f"Part A scenario summary not found: {path}")
+
+    return pl.read_csv(path)
+
+
+@st.cache_data(show_spinner=False)
+def load_constraint_audit() -> pl.DataFrame:
+    path = settings.output_dir / MODEL_OUTPUT_FILES["audit"]
+    if not path.exists():
+        raise FileNotFoundError(f"Part A constraint audit not found: {path}")
+
+    return pl.read_csv(path)

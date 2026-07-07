@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import streamlit as st
 
-from bess_dashboard.data import filter_hour_range, load_processed_dataset
+from bess_dashboard.data import (
+    filter_hour_range,
+    load_constraint_audit,
+    load_dispatch_output,
+    load_processed_dataset,
+    load_scenario_summary,
+)
 from bess_dashboard.tabs.data import render_data_tab
+from bess_dashboard.tabs.dispatch import render_dispatch_tab
 
 
 def apply_theme() -> None:
@@ -115,25 +122,40 @@ def main() -> None:
         unsafe_allow_html=True,
     )
 
-    resolution = st.sidebar.segmented_control(
-        "Data resolution",
-        options=["Hourly", "15-minute"],
-        default="Hourly",
+    active_view = st.segmented_control(
+        "View",
+        options=["Data", "Dispatch"],
+        default="Data",
+        key="active_dashboard_view",
     )
-    hour_range = st.sidebar.slider(
-        "Hours",
-        min_value=0,
-        max_value=23,
-        value=(0, 23),
-    )
-    show_detail = st.sidebar.checkbox("Detail table", value=True)
 
-    grain = "hourly" if resolution == "Hourly" else "15min"
-    df = filter_hour_range(load_processed_dataset(grain), hour_range)
+    if active_view == "Data":
+        resolution = st.sidebar.segmented_control(
+            "Data resolution",
+            options=["Hourly", "15-minute"],
+            default="Hourly",
+        )
+        hour_range = st.sidebar.slider(
+            "Hours",
+            min_value=0,
+            max_value=23,
+            value=(0, 23),
+        )
+        show_detail = st.sidebar.checkbox("Detail table", value=True)
 
-    data_tab = st.tabs(["Data"])[0]
-    with data_tab:
+        grain = "hourly" if resolution == "Hourly" else "15min"
+        df = filter_hour_range(load_processed_dataset(grain), hour_range)
         render_data_tab(df, resolution=resolution, show_detail=show_detail)
+
+    if active_view == "Dispatch":
+        try:
+            render_dispatch_tab(
+                load_dispatch_output(),
+                load_scenario_summary(),
+                load_constraint_audit(),
+            )
+        except FileNotFoundError as exc:
+            st.warning(str(exc))
 
 
 if __name__ == "__main__":

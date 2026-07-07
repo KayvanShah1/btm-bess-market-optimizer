@@ -5,7 +5,7 @@ description = "Scenario-based optimizer for allocating a behind-the-meter batter
 readme = "README.md"
 requires-python = ">=3.12"
 license = { file = "LICENSE" }
-dependencies = ["rich", "bess-dashboard", "bess-optimizer"]
+dependencies = ["rich"]
 
 [tool.uv.workspace]
 members = ["bess_optimizer", "apps/dashboard"]
@@ -13,9 +13,6 @@ members = ["bess_optimizer", "apps/dashboard"]
 [dependency-groups]
 dev = ["ipykernel>=7.1.0", "pytest>=9.0.0", "ruff>=0.14.9"]
 
-[tool.uv.sources]
-bess-dashboard = { workspace = true }
-bess-optimizer = { workspace = true }
 
 [tool.ruff]
 extend-include = ["*.ipynb"]

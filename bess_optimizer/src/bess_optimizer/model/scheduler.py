@@ -11,6 +11,8 @@ from bess_optimizer.model.baselines import (
     compute_dispatch_thresholds,
     fcr_headroom_violation,
     local_reserve_requirement,
+    refresh_operating_metrics,
+    remaining_discharge_capacity_mw,
 )
 from bess_optimizer.model.battery import BatteryState
 from bess_optimizer.model.config import PartAModelConfig
@@ -46,12 +48,24 @@ def generate_candidate_allocations(
     return candidates
 
 
-def mfrr_readiness_violation(soc_mwh: float, mfrr_commit_mw: float, config: PartAModelConfig) -> bool:
+def mfrr_readiness_violation(
+    soc_mwh: float,
+    mfrr_commit_mw: float,
+    config: PartAModelConfig,
+    previous_soc_mwh: float | None = None,
+) -> bool:
     if mfrr_commit_mw <= 1e-9:
         return False
 
     required_mwh = mfrr_commit_mw * config.reserve.mfrr_activation_duration_hours
-    return soc_mwh < config.battery.min_soc_mwh + required_mwh - 1e-9
+    readiness_floor_mwh = config.battery.min_soc_mwh + required_mwh
+    current_violation = soc_mwh < readiness_floor_mwh - 1e-9
+    if config.reserve.mfrr_readiness_lookback_hours <= 0:
+        return current_violation
+
+    previous_soc = soc_mwh if previous_soc_mwh is None else previous_soc_mwh
+    previous_violation = previous_soc < readiness_floor_mwh - 1e-9
+    return current_violation or previous_violation
 
 
 def candidate_revenue(
@@ -95,6 +109,7 @@ def candidate_is_feasible(
     grid_import_kw: float,
     peak_threshold_kw: float,
     config: PartAModelConfig,
+    previous_soc_mwh: float | None = None,
 ) -> bool:
     status = build_constraint_status(
         soc_mwh=soc_mwh,
@@ -108,7 +123,12 @@ def candidate_is_feasible(
         peak_threshold_kw=peak_threshold_kw,
         config=config,
         fcr_headroom_violation=fcr_headroom_violation(soc_mwh, candidate.fcr_commit_mw, config),
-        mfrr_readiness_violation=mfrr_readiness_violation(soc_mwh, candidate.mfrr_commit_mw, config),
+        mfrr_readiness_violation=mfrr_readiness_violation(
+            soc_mwh,
+            candidate.mfrr_commit_mw,
+            config,
+            previous_soc_mwh=previous_soc_mwh,
+        ),
     )
     return status.feasible
 
@@ -125,15 +145,18 @@ def run_stacked_schedule(
     output_rows = []
 
     for index, source_row in enumerate(input_rows):
+        previous_soc_mwh = state.soc_mwh
+        local_reserve_mw = local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config)
         result = apply_local_dispatch(
             source_row,
             scenario=scenario_name,
             state=state,
             thresholds=thresholds,
             config=config,
+            local_reserve_mw=local_reserve_mw,
             service_selected="stacked",
         )
-        local_reserve_mw = local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config)
+        post_local_soc_mwh = state.soc_mwh
         available_market_mw = max(
             0.0,
             config.battery.power_mw - result.used_local_power_mw - local_reserve_mw,
@@ -163,6 +186,7 @@ def run_stacked_schedule(
                 grid_import_kw=float(result.row["grid_import_kw"]),
                 peak_threshold_kw=thresholds.peak_threshold_kw,
                 config=config,
+                previous_soc_mwh=previous_soc_mwh,
             ):
                 continue
             revenue = candidate_revenue(source_row, candidate, activation_probability, config)
@@ -197,6 +221,14 @@ def run_stacked_schedule(
         result.row["mfrr_capacity_revenue_eur"] = best_revenue["mfrr_capacity_revenue_eur"]
         result.row["expected_mfrr_activation_revenue_eur"] = best_revenue["expected_mfrr_activation_revenue_eur"]
         result.row["total_value_eur"] = float(result.row["local_savings_eur"]) + best_revenue["candidate_value_eur"]
+        refresh_operating_metrics(result.row)
+
+        mfrr_ready_violation = mfrr_readiness_violation(
+            post_local_soc_mwh,
+            best_candidate.mfrr_commit_mw,
+            config,
+            previous_soc_mwh=previous_soc_mwh,
+        )
 
         status = build_constraint_status(
             soc_mwh=state.soc_mwh,
@@ -209,8 +241,15 @@ def run_stacked_schedule(
             grid_import_kw=float(result.row["grid_import_kw"]),
             peak_threshold_kw=thresholds.peak_threshold_kw,
             config=config,
+            battery_available_discharge_mw=remaining_discharge_capacity_mw(
+                state,
+                battery_discharge_mw=float(result.row["battery_discharge_mw"]),
+                local_reserve_mw=best_candidate.local_reserve_mw,
+                dt_hours=float(source_row["dt_hours"]),
+                config=config,
+            ),
             fcr_headroom_violation=fcr_headroom_violation(state.soc_mwh, best_candidate.fcr_commit_mw, config),
-            mfrr_readiness_violation=mfrr_readiness_violation(state.soc_mwh, best_candidate.mfrr_commit_mw, config),
+            mfrr_readiness_violation=mfrr_ready_violation,
         )
         output_rows.append(add_constraint_fields(result.row, status))
 

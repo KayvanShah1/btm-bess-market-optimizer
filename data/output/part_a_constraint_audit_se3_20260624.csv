@@ -1,7 +1,7 @@
-scenario,row_count,feasible_row_count,violation_row_count,soc_min_violation,soc_max_violation,power_limit_violation,shared_capacity_violation,peak_import_violation,fcr_headroom_violation,mfrr_readiness_violation,savings_floor_violation
-no_battery,24,24,0,0,0,0,0,0,0,0,0
-local_only,24,24,0,0,0,0,0,0,0,0,0
-fcr_only,24,24,0,0,0,0,0,0,0,0,0
-stacked_low_activation,24,24,0,0,0,0,0,0,0,0,0
-stacked_base_activation,24,24,0,0,0,0,0,0,0,0,0
-stacked_high_activation,24,24,0,0,0,0,0,0,0,0,0
+scenario,row_count,feasible_row_count,violation_row_count,scenario_savings_floor_violation,max_total_reserved_or_used_mw,max_residual_peak_exposure_kw,total_residual_peak_exposure_kwh,soc_min_violation,soc_max_violation,power_limit_violation,shared_capacity_violation,peak_import_violation,fcr_headroom_violation,mfrr_readiness_violation,savings_floor_violation
+no_battery,24,24,0,0,0.0,205.3104685627485,450.61255148551516,0,0,0,0,0,0,0,0
+local_only,24,24,0,0,1.0,99.89325585650761,99.89325585650772,0,0,0,0,0,0,0,0
+fcr_only,24,24,0,0,1.0,99.89325585650761,99.89325585650772,0,0,0,0,0,0,0,0
+stacked_low_activation,24,24,0,0,1.0,99.89325585650761,99.89325585650772,0,0,0,0,0,0,0,0
+stacked_base_activation,24,24,0,0,1.0,99.89325585650761,99.89325585650772,0,0,0,0,0,0,0,0
+stacked_high_activation,24,24,0,0,1.0,99.89325585650761,99.89325585650772,0,0,0,0,0,0,0,0

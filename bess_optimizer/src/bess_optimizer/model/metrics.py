@@ -31,6 +31,10 @@ def build_scenario_summary(dispatch_df: pl.DataFrame, config: PartAModelConfig) 
         row_violation_count = int((scenario_df["constraint_status"] != "ok").sum())
         savings_floor_pass = scenario == "no_battery" or local_savings_pct >= config.site.minimum_savings_pct
         constraint_violation_count = row_violation_count + (0 if savings_floor_pass else 1)
+        total_residual_peak_exposure_kwh = float(
+            (scenario_df["residual_peak_exposure_kw"] * scenario_df["dt_hours"]).sum()
+        )
+        max_residual_peak_exposure_kw = float(scenario_df["residual_peak_exposure_kw"].max())
 
         rows.append(
             {
@@ -50,6 +54,8 @@ def build_scenario_summary(dispatch_df: pl.DataFrame, config: PartAModelConfig) 
                 "min_soc_mwh": float(scenario_df["soc_mwh"].min()),
                 "max_soc_mwh": float(scenario_df["soc_mwh"].max()),
                 "peak_import_reduction_kw": no_battery_peak_kw - peak_import_kw,
+                "max_residual_peak_exposure_kw": max_residual_peak_exposure_kw,
+                "total_residual_peak_exposure_kwh": total_residual_peak_exposure_kwh,
                 "constraint_violation_count": constraint_violation_count,
                 "savings_floor_pass": savings_floor_pass,
             }
@@ -62,7 +68,10 @@ def build_scenario_summary(dispatch_df: pl.DataFrame, config: PartAModelConfig) 
     return pl.DataFrame(rows)
 
 
-def build_constraint_audit(dispatch_df: pl.DataFrame) -> pl.DataFrame:
+def build_constraint_audit(dispatch_df: pl.DataFrame, summary_df: pl.DataFrame) -> pl.DataFrame:
+    savings_floor_by_scenario = {
+        row["scenario"]: not bool(row["savings_floor_pass"]) for row in summary_df.select("scenario", "savings_floor_pass").to_dicts()
+    }
     rows = []
     for scenario in dispatch_df["scenario"].unique(maintain_order=True).to_list():
         scenario_df = dispatch_df.filter(pl.col("scenario") == scenario)
@@ -71,6 +80,12 @@ def build_constraint_audit(dispatch_df: pl.DataFrame) -> pl.DataFrame:
             "row_count": scenario_df.height,
             "feasible_row_count": int((scenario_df["constraint_status"] == "ok").sum()),
             "violation_row_count": int((scenario_df["constraint_status"] != "ok").sum()),
+            "scenario_savings_floor_violation": int(savings_floor_by_scenario.get(scenario, False)),
+            "max_total_reserved_or_used_mw": float(scenario_df["total_reserved_or_used_mw"].max()),
+            "max_residual_peak_exposure_kw": float(scenario_df["residual_peak_exposure_kw"].max()),
+            "total_residual_peak_exposure_kwh": float(
+                (scenario_df["residual_peak_exposure_kw"] * scenario_df["dt_hours"]).sum()
+            ),
         }
         for field in CONSTRAINT_FIELDS:
             audit_row[field] = int(scenario_df[field].sum())

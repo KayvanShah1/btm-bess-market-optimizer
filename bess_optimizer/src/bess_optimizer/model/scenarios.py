@@ -44,7 +44,7 @@ def run_part_a_scenarios(df: pl.DataFrame, config: PartAModelConfig) -> tuple[pl
 
     dispatch_df = pl.concat(dispatch_frames, how="vertical")
     summary_df = build_scenario_summary(dispatch_df, config)
-    audit_df = build_constraint_audit(dispatch_df)
+    audit_df = build_constraint_audit(dispatch_df, summary_df)
 
     return dispatch_df, summary_df, audit_df
 

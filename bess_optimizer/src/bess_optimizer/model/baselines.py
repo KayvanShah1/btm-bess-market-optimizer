@@ -44,6 +44,29 @@ def local_reserve_requirement(
     return min(config.battery.power_mw, peak_excess_kw / 1000.0)
 
 
+def local_reserve_energy_mwh(local_reserve_mw: float) -> float:
+    return max(local_reserve_mw, 0.0)
+
+
+def remaining_discharge_capacity_mw(
+    state: BatteryState,
+    *,
+    battery_discharge_mw: float,
+    local_reserve_mw: float,
+    dt_hours: float,
+    config: PartAModelConfig,
+) -> float:
+    if dt_hours <= 0:
+        return 0.0
+    remaining_power_mw = max(config.battery.power_mw - battery_discharge_mw, 0.0)
+    energy_limited_mw = (
+        state.available_discharge_mwh(config.battery, local_reserve_energy_mwh(local_reserve_mw))
+        * config.battery.discharge_efficiency
+        / dt_hours
+    )
+    return max(min(remaining_power_mw, energy_limited_mw), 0.0)
+
+
 def zero_constraint_values() -> dict[str, bool]:
     return {field: False for field in CONSTRAINT_FIELDS}
 
@@ -66,17 +89,21 @@ def build_constraint_status(
     grid_import_kw: float,
     peak_threshold_kw: float,
     config: PartAModelConfig,
+    battery_available_discharge_mw: float = 0.0,
     fcr_headroom_violation: bool = False,
     mfrr_readiness_violation: bool = False,
     savings_floor_violation: bool = False,
 ) -> ConstraintStatus:
     epsilon = 1e-9
+    local_physical_power_mw = max(battery_charge_mw, battery_discharge_mw)
+    total_reserved_or_used_mw = local_physical_power_mw + local_reserve_mw + fcr_commit_mw + mfrr_commit_mw
     return ConstraintStatus(
         soc_min_violation=soc_mwh < config.battery.min_soc_mwh - epsilon,
         soc_max_violation=soc_mwh > config.battery.max_soc_mwh + epsilon,
-        power_limit_violation=max(battery_charge_mw, battery_discharge_mw) > config.battery.power_mw + epsilon,
-        shared_capacity_violation=local_reserve_mw + fcr_commit_mw + mfrr_commit_mw > config.battery.power_mw + epsilon,
-        peak_import_violation=grid_to_battery_kw > 0 and grid_import_kw > peak_threshold_kw + epsilon,
+        power_limit_violation=local_physical_power_mw > config.battery.power_mw + epsilon,
+        shared_capacity_violation=total_reserved_or_used_mw > config.battery.power_mw + epsilon,
+        peak_import_violation=grid_import_kw > peak_threshold_kw + epsilon
+        and battery_available_discharge_mw > epsilon,
         fcr_headroom_violation=fcr_headroom_violation,
         mfrr_readiness_violation=mfrr_readiness_violation,
         savings_floor_violation=savings_floor_violation,
@@ -132,7 +159,10 @@ def base_output_row(
         "battery_discharge_mw": 0.0,
         "soc_mwh": soc_mwh,
         "peak_threshold_kw": peak_threshold_kw,
+        "residual_peak_exposure_kw": max(flows["remaining_load_kw"] - peak_threshold_kw, 0.0),
         "local_reserve_mw": 0.0,
+        "local_physical_power_mw": 0.0,
+        "total_reserved_or_used_mw": 0.0,
         "fcr_commit_mw": 0.0,
         "mfrr_commit_mw": 0.0,
         "service_selected": service_selected,
@@ -147,6 +177,18 @@ def base_output_row(
     }
 
 
+def refresh_operating_metrics(row: dict[str, Any]) -> None:
+    local_physical_power_mw = max(float(row["battery_charge_mw"]), float(row["battery_discharge_mw"]))
+    row["local_physical_power_mw"] = local_physical_power_mw
+    row["total_reserved_or_used_mw"] = (
+        local_physical_power_mw
+        + float(row["local_reserve_mw"])
+        + float(row["fcr_commit_mw"])
+        + float(row["mfrr_commit_mw"])
+    )
+    row["residual_peak_exposure_kw"] = max(float(row["grid_import_kw"]) - float(row["peak_threshold_kw"]), 0.0)
+
+
 def apply_local_dispatch(
     source_row: dict[str, Any],
     *,
@@ -154,6 +196,7 @@ def apply_local_dispatch(
     state: BatteryState,
     thresholds: DispatchThresholds,
     config: PartAModelConfig,
+    local_reserve_mw: float,
     service_selected: str,
 ) -> LocalDispatchResult:
     dt_hours = float(source_row["dt_hours"])
@@ -174,9 +217,16 @@ def apply_local_dispatch(
     battery_to_load_kw = 0.0
     battery_charge_mw = 0.0
     battery_discharge_mw = 0.0
+    reserve_energy_mwh = local_reserve_energy_mwh(local_reserve_mw)
+    local_power_limit_mw = max(config.battery.power_mw - local_reserve_mw, 0.0)
 
     if flows["pv_surplus_kw"] > 0:
-        battery_charge_mw = state.charge(flows["pv_surplus_kw"] / 1000.0, config.battery, dt_hours)
+        battery_charge_mw = state.charge(
+            flows["pv_surplus_kw"] / 1000.0,
+            config.battery,
+            dt_hours,
+            power_limit_mw=local_power_limit_mw,
+        )
         pv_to_battery_kw = battery_charge_mw * 1000.0
         pv_export_or_curtailed_kw = max(flows["pv_surplus_kw"] - pv_to_battery_kw, 0.0)
     else:
@@ -186,7 +236,13 @@ def apply_local_dispatch(
             requested_discharge_kw = max(requested_discharge_kw, flows["remaining_load_kw"])
 
         if requested_discharge_kw > 0:
-            battery_discharge_mw = state.discharge(requested_discharge_kw / 1000.0, config.battery, dt_hours)
+            battery_discharge_mw = state.discharge(
+                requested_discharge_kw / 1000.0,
+                config.battery,
+                dt_hours,
+                power_limit_mw=local_power_limit_mw,
+                reserve_energy_mwh=reserve_energy_mwh,
+            )
             battery_to_load_kw = min(battery_discharge_mw * 1000.0, flows["remaining_load_kw"])
 
         grid_to_load_after_discharge_kw = max(flows["remaining_load_kw"] - battery_to_load_kw, 0.0)
@@ -197,7 +253,12 @@ def apply_local_dispatch(
         )
         if can_grid_charge:
             peak_safe_charge_kw = max(thresholds.peak_threshold_kw - grid_to_load_after_discharge_kw, 0.0)
-            battery_charge_mw = state.charge(peak_safe_charge_kw / 1000.0, config.battery, dt_hours)
+            battery_charge_mw = state.charge(
+                peak_safe_charge_kw / 1000.0,
+                config.battery,
+                dt_hours,
+                power_limit_mw=local_power_limit_mw,
+            )
             grid_to_battery_kw = battery_charge_mw * 1000.0
 
     grid_to_load_kw = max(flows["remaining_load_kw"] - battery_to_load_kw, 0.0)
@@ -217,11 +278,13 @@ def apply_local_dispatch(
             "battery_charge_mw": battery_charge_mw,
             "battery_discharge_mw": battery_discharge_mw,
             "soc_mwh": state.soc_mwh,
+            "local_reserve_mw": local_reserve_mw,
             "energy_cost_eur": energy_cost_eur,
             "local_savings_eur": local_savings_eur,
             "total_value_eur": local_savings_eur,
         }
     )
+    refresh_operating_metrics(row)
     used_local_power_mw = max(battery_charge_mw, battery_discharge_mw)
     return LocalDispatchResult(row=row, used_local_power_mw=used_local_power_mw)
 
@@ -259,21 +322,27 @@ def run_local_only_dispatch(df: pl.DataFrame, config: PartAModelConfig) -> pl.Da
             state=state,
             thresholds=thresholds,
             config=config,
+            local_reserve_mw=local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config),
             service_selected="local_only",
         )
-        local_reserve_mw = local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config)
-        result.row["local_reserve_mw"] = local_reserve_mw
         status = build_constraint_status(
             soc_mwh=float(result.row["soc_mwh"]),
             battery_charge_mw=float(result.row["battery_charge_mw"]),
             battery_discharge_mw=float(result.row["battery_discharge_mw"]),
-            local_reserve_mw=local_reserve_mw,
+            local_reserve_mw=float(result.row["local_reserve_mw"]),
             fcr_commit_mw=0.0,
             mfrr_commit_mw=0.0,
             grid_to_battery_kw=float(result.row["grid_to_battery_kw"]),
             grid_import_kw=float(result.row["grid_import_kw"]),
             peak_threshold_kw=thresholds.peak_threshold_kw,
             config=config,
+            battery_available_discharge_mw=remaining_discharge_capacity_mw(
+                state,
+                battery_discharge_mw=float(result.row["battery_discharge_mw"]),
+                local_reserve_mw=float(result.row["local_reserve_mw"]),
+                dt_hours=float(source_row["dt_hours"]),
+                config=config,
+            ),
         )
         rows.append(add_constraint_fields(result.row, status))
 
@@ -288,16 +357,17 @@ def run_fcr_only_baseline(df: pl.DataFrame, config: PartAModelConfig) -> pl.Data
     step = config.reserve.market_capacity_step_mw
 
     for index, source_row in enumerate(input_rows):
+        local_reserve_mw = local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config)
         result = apply_local_dispatch(
             source_row,
             scenario="fcr_only",
             state=state,
             thresholds=thresholds,
             config=config,
+            local_reserve_mw=local_reserve_mw,
             service_selected="local_plus_fcr",
         )
         dt_hours = float(source_row["dt_hours"])
-        local_reserve_mw = local_reserve_requirement(input_rows, index, thresholds.peak_threshold_kw, config)
         available_mw = max(config.battery.power_mw - result.used_local_power_mw - local_reserve_mw, 0.0)
         available_mw = (available_mw // step) * step
 
@@ -317,6 +387,7 @@ def run_fcr_only_baseline(df: pl.DataFrame, config: PartAModelConfig) -> pl.Data
         result.row["fcr_revenue_eur"] = best_revenue
         result.row["total_value_eur"] = float(result.row["local_savings_eur"]) + best_revenue
         result.row["service_selected"] = "local_plus_fcr" if best_fcr_mw > 0 else "local_only"
+        refresh_operating_metrics(result.row)
 
         status = build_constraint_status(
             soc_mwh=float(result.row["soc_mwh"]),
@@ -329,6 +400,13 @@ def run_fcr_only_baseline(df: pl.DataFrame, config: PartAModelConfig) -> pl.Data
             grid_import_kw=float(result.row["grid_import_kw"]),
             peak_threshold_kw=thresholds.peak_threshold_kw,
             config=config,
+            battery_available_discharge_mw=remaining_discharge_capacity_mw(
+                state,
+                battery_discharge_mw=float(result.row["battery_discharge_mw"]),
+                local_reserve_mw=local_reserve_mw,
+                dt_hours=dt_hours,
+                config=config,
+            ),
             fcr_headroom_violation=fcr_headroom_violation(state.soc_mwh, best_fcr_mw, config),
         )
         rows.append(add_constraint_fields(result.row, status))

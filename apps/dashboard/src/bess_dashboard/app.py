@@ -42,7 +42,7 @@ def apply_theme() -> None:
         }
         .section-title {
             color: #f8fafc;
-            font-size: 1.02rem;
+            font-size: 1.4rem;
             font-weight: 700;
             margin: 2rem 0 0.65rem;
         }

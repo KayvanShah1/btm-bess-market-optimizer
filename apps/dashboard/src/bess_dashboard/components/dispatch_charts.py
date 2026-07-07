@@ -64,7 +64,9 @@ def soc_figure(df: pl.DataFrame) -> go.Figure:
 def capacity_allocation_figure(df: pl.DataFrame) -> go.Figure:
     figure = go.Figure()
     x_values = df["timestamp"].to_list()
-    figure.add_trace(go.Bar(x=x_values, y=_series(df, "local_reserve_mw"), name="Local reserve", marker_color=LOCAL_COLOR))
+    figure.add_trace(
+        go.Bar(x=x_values, y=_series(df, "local_reserve_mw"), name="Local reserve", marker_color=LOCAL_COLOR)
+    )
     figure.add_trace(go.Bar(x=x_values, y=_series(df, "fcr_commit_mw"), name="FCR-N", marker_color=FCR_COLOR))
     figure.add_trace(go.Bar(x=x_values, y=_series(df, "mfrr_commit_mw"), name="mFRR", marker_color=MFRR_COLOR))
     figure.update_layout(barmode="stack")
@@ -105,3 +107,52 @@ def value_component_figure(summary_row: dict[str, float | int | str]) -> go.Figu
     ]
     figure = go.Figure(go.Bar(x=labels, y=values, marker_color=VALUE_COLORS, name="Value"))
     return _apply_layout(figure, height=330, yaxis_title="EUR")
+
+
+def scenario_value_comparison_figure(summary_df: pl.DataFrame) -> go.Figure:
+    figure = go.Figure()
+    figure.add_trace(
+        go.Bar(
+            x=summary_df["scenario"].to_list(),
+            y=_series(summary_df, "total_value_eur"),
+            name="Total value",
+        )
+    )
+    return _apply_layout(figure, height=340, yaxis_title="EUR")
+
+
+def soc_overlay_figure(dispatch_df: pl.DataFrame) -> go.Figure:
+    figure = go.Figure()
+
+    for scenario in dispatch_df["scenario"].unique(maintain_order=True).to_list():
+        if scenario == "no_battery":
+            continue
+
+        scenario_df = dispatch_df.filter(pl.col("scenario") == scenario).sort("timestamp")
+        figure.add_trace(
+            go.Scatter(
+                x=scenario_df["timestamp"].to_list(),
+                y=_series(scenario_df, "soc_mwh"),
+                mode="lines",
+                name=scenario.replace("_", " ").title(),
+            )
+        )
+    return _apply_layout(figure, height=360, yaxis_title="MWh")
+
+
+def market_revenue_comparison_figure(summary_df: pl.DataFrame) -> go.Figure:
+    figure = go.Figure()
+    x_values = summary_df["scenario"].to_list()
+
+    figure.add_trace(go.Bar(x=x_values, y=_series(summary_df, "fcr_revenue_eur"), name="FCR-N"))
+    figure.add_trace(go.Bar(x=x_values, y=_series(summary_df, "mfrr_capacity_revenue_eur"), name="mFRR CM"))
+    figure.add_trace(
+        go.Bar(
+            x=x_values,
+            y=_series(summary_df, "expected_mfrr_activation_revenue_eur"),
+            name="mFRR EAM",
+        )
+    )
+
+    figure.update_layout(barmode="stack")
+    return _apply_layout(figure, height=340, yaxis_title="EUR")

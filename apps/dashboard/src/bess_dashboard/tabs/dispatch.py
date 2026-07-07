@@ -6,7 +6,10 @@ import streamlit as st
 from bess_dashboard.components.dispatch_charts import (
     capacity_allocation_figure,
     grid_import_figure,
+    market_revenue_comparison_figure,
+    scenario_value_comparison_figure,
     soc_figure,
+    soc_overlay_figure,
     value_component_figure,
 )
 
@@ -130,6 +133,25 @@ def render_dispatch_kpis(summary_row: dict[str, float | int | str]) -> None:
 
 
 def render_dispatch_tab(dispatch_df: pl.DataFrame, summary_df: pl.DataFrame, audit_df: pl.DataFrame) -> None:
+    st.markdown('<div class="section-title">Scenario comparison</div>', unsafe_allow_html=True)
+    st.caption(
+        "Physical grid import can remain similar across scenarios because FCR-N and mFRR are capacity commitments. "
+        "The main differences appear in reserve allocation, SOC exposure, and total value."
+    )
+
+    left, right = st.columns(2, gap="large")
+    with left:
+        st.markdown("**Total value by scenario**")
+        st.plotly_chart(scenario_value_comparison_figure(summary_df), width="stretch", config=CHART_CONFIG)
+    with right:
+        st.markdown("**Market revenue mix by scenario**")
+        st.plotly_chart(market_revenue_comparison_figure(summary_df), width="stretch", config=CHART_CONFIG)
+
+    st.markdown('<div class="section-title">SOC comparison across scenarios</div>', unsafe_allow_html=True)
+    st.plotly_chart(soc_overlay_figure(dispatch_df), width="stretch", config=CHART_CONFIG)
+
+    st.markdown('<div class="section-title">Selected scenario detail</div>', unsafe_allow_html=True)
+
     options = scenario_options(dispatch_df)
     default_index = options.index("stacked_base_activation") if "stacked_base_activation" in options else 0
     scenario = st.selectbox("Scenario", options=options, index=default_index, format_func=scenario_label)
@@ -151,6 +173,11 @@ def render_dispatch_tab(dispatch_df: pl.DataFrame, summary_df: pl.DataFrame, aud
     with right:
         st.markdown('<div class="section-title">Grid import</div>', unsafe_allow_html=True)
         st.plotly_chart(grid_import_figure(scenario_df), width="stretch", config=CHART_CONFIG)
+        st.caption(
+            "Grid import reflects site-meter import after PV self-consumption and local battery dispatch. "
+            "FCR-N and mFRR capacity commitments mainly affect reserve headroom, SOC, and revenue, so the import "
+            "profile can remain similar across scenarios."
+        )
 
     st.markdown('<div class="section-title">Value components</div>', unsafe_allow_html=True)
     st.plotly_chart(value_component_figure(summary_row), width="stretch", config=CHART_CONFIG)

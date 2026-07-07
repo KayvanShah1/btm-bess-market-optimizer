@@ -98,10 +98,11 @@ def service_label(service: str) -> str:
     return SERVICE_LABELS.get(service, service.replace("_", " ").title())
 
 
-def scenario_definition_rows() -> list[dict[str, str]]:
+def scenario_definition_rows(selected_scenario: str) -> list[dict[str, str]]:
     return [
         {"Scenario": scenario_label(scenario), "Meaning": SCENARIO_DESCRIPTIONS[scenario]}
         for scenario in SCENARIO_ORDER
+        if scenario != selected_scenario
     ]
 
 
@@ -109,9 +110,10 @@ def render_scenario_context(scenario: str) -> None:
     st.markdown('<div class="section-title">Scenario setup</div>', unsafe_allow_html=True)
     with st.container(border=True):
         st.caption("SELECTED SCENARIO")
+        st.write(f"**{scenario_label(scenario)}**")
         st.write(SCENARIO_DESCRIPTIONS[scenario])
-        st.caption("SCENARIO DEFINITIONS")
-        st.dataframe(scenario_definition_rows(), hide_index=True, width="stretch")
+        st.caption("OTHER SCENARIOS")
+        st.dataframe(scenario_definition_rows(scenario), hide_index=True, width="stretch")
 
 
 def render_dispatch_kpis(summary_row: dict[str, float | int | str]) -> None:

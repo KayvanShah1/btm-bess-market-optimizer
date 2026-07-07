@@ -11,6 +11,7 @@ from bess_dashboard.data import (
 )
 from bess_dashboard.tabs.data import render_data_tab
 from bess_dashboard.tabs.dispatch import render_dispatch_tab
+from bess_dashboard.tabs.methodology import render_methodology_tab
 
 
 def apply_theme() -> None:
@@ -124,7 +125,7 @@ def main() -> None:
 
     active_view = st.segmented_control(
         "View",
-        options=["Data", "Dispatch"],
+        options=["Data", "Dispatch", "Methodology"],
         default="Data",
         key="active_dashboard_view",
     )
@@ -156,6 +157,9 @@ def main() -> None:
             )
         except FileNotFoundError as exc:
             st.warning(str(exc))
+
+    if active_view == "Methodology":
+        render_methodology_tab()
 
 
 if __name__ == "__main__":

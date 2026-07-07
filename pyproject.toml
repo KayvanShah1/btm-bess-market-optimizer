@@ -1,0 +1,28 @@
+[project]
+name = "btm-bess-market-optimizer"
+version = "0.1.0"
+description = "Scenario-based optimizer for allocating a behind-the-meter battery across local savings, FCR-N, and mFRR under SOC, peak-shaving, and uncertainty constraints."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { file = "LICENSE" }
+dependencies = []
+
+[tool.uv.workspace]
+members = ["bess_optmizer"]
+
+[dependency-groups]
+dev = ["ipykernel>=7.1.0", "pytest>=9.0.0", "ruff>=0.14.9"]
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = 120
+quote-style = "double"
+
+[tool.ruff.lint.pycodestyle]
+# But override the linter's enforced line length to 10.
+max-line-length = 120

@@ -4,15 +4,16 @@ from typing import Any
 
 import polars as pl
 
-from bess_optimizer.model.baselines import (
-    add_constraint_fields,
+from bess_optimizer.model.constraints import build_constraint_status, fcr_headroom_violation
+from bess_optimizer.model.dispatch import (
     apply_local_dispatch,
-    build_constraint_status,
     compute_dispatch_thresholds,
-    fcr_headroom_violation,
     local_reserve_requirement,
-    refresh_operating_metrics,
     remaining_discharge_capacity_mw,
+)
+from bess_optimizer.model.rows import (
+    add_constraint_fields,
+    refresh_operating_metrics,
 )
 from bess_optimizer.model.battery import BatteryState
 from bess_optimizer.model.config import PartAModelConfig
@@ -195,9 +196,7 @@ def run_stacked_schedule(
                 best_revenue = revenue
 
         expected_activation_discharge_mwh = (
-            best_candidate.mfrr_commit_mw
-            * activation_probability
-            * config.reserve.mfrr_activation_duration_hours
+            best_candidate.mfrr_commit_mw * activation_probability * config.reserve.mfrr_activation_duration_hours
         )
         if expected_activation_discharge_mwh > 0:
             state.soc_mwh -= expected_activation_discharge_mwh / config.battery.discharge_efficiency

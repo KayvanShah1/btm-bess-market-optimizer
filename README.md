@@ -14,6 +14,8 @@ The model does not assume that stacked market participation is always better.
 
 That is the central Part A conclusion: mFRR should be accepted only when its expected value compensates for the battery flexibility it consumes.
 
+A production version would add a forecasting layer trained on at least two years of site, market, weather, and activation data, but the constrained optimizer would still enforce SOC, local savings, reserve readiness, and shared-capacity limits.
+
 ## Setup
 
 From the repository root:

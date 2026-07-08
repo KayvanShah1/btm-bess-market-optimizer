@@ -158,11 +158,11 @@ Current limitations are:
 
 These limitations are acceptable for the assessment objective because the main task is to reason clearly about FCR-N versus mFRR commitment under local savings, peak protection, SOC, and activation uncertainty.
 
-## 12. Future Data Extensions
+## 12. Future Data Requirements
 
-The current Part A model uses one representative day to keep the assignment solution transparent and reviewable. A production version should be trained and evaluated on a much larger historical dataset, ideally at least two years of hourly or 15-minute observations.
+The current Part A model uses one representative day to keep the assignment solution transparent and reviewable. A production version should be trained and backtested on a larger historical dataset, ideally at least two years of hourly or 15-minute observations.
 
-At least 2 years of data would help the model learn:
+At least two years of history would help capture:
 
 - weekday versus weekend operating patterns
 - seasonal PV and load variation
@@ -172,52 +172,17 @@ At least 2 years of data would help the model learn:
 - mFRR activation frequency and scarcity periods
 - unusual operating days, outages, holidays, and market spikes
 
-### Recommended historical dataset
-
 | Data family | Minimum useful history | Why it matters |
 |---|---:|---|
 | Site load | 1-2 years | Learn customer demand seasonality, operating schedules, and peak-risk windows |
-| PV generation / forecast | 1-2 years | Learn daily and seasonal solar-shape uncertainty |
-| Spot prices | 2+ years | Capture price volatility, seasonal spreads, and high-price discharge opportunities |
-| FCR-N prices | 2+ years | Estimate reserve revenue stability and opportunity cost versus mFRR |
-| mFRR capacity prices | 2+ years | Learn when mFRR capacity is attractive relative to FCR-N |
+| PV generation / forecast | 1-2 years | Learn solar-shape uncertainty and charging opportunity |
+| Spot prices | 2+ years | Capture price volatility and arbitrage opportunities |
+| FCR-N prices | 2+ years | Estimate reserve revenue stability |
+| mFRR capacity prices | 2+ years | Learn when mFRR is attractive relative to FCR-N |
 | mFRR activation prices / flags | 2+ years | Estimate activation probability and activation-value risk |
-| Weather | 1-2 years | Improve PV and load forecasts using irradiance, temperature, and cloud-cover features |
+| Weather | 1-2 years | Improve PV and load forecasts |
 | Calendar features | 1-2 years | Capture weekday, weekend, holiday, and operating-calendar effects |
 
-### Data quality and anomaly handling
+Before using this data for ML or optimization, the pipeline should check for missing intervals, duplicate timestamps, daylight-saving-time issues, impossible load/PV values, meter resets, stuck sensor values, and abnormal market records.
 
-Before using historical data for ML, the pipeline should include data-quality checks for:
-
-- missing intervals
-- duplicate timestamps
-- daylight-saving-time shifts
-- negative or impossible load/PV values
-- sudden meter resets
-- market-price spikes
-- stuck sensor values
-- outlier activation prices or volumes
-- inconsistent zone mappings
-
-Anomalies should not always be removed. Some market spikes are real and economically important. The recommended approach is:
-
-| Case | Treatment |
-|---|---|
-| Meter errors or duplicate records | Clean or remove |
-| Missing short gaps | Impute with time-aware interpolation or similar-period values |
-| Missing long gaps | Exclude from training or mark with missingness flags |
-| Real price spikes | Keep, but cap only for robust training experiments |
-| Real activation events | Keep, because they are central to mFRR risk |
-| Sensor freezes / impossible values | Flag and exclude from model training |
-
-### Natural next steps are
-
-- longer historical backtest
-- 15-minute optimization
-- measured C&I load profiles
-- weather-aware PV forecasting
-- richer mFRR activation probability modelling
-- explicit terminal SOC policy
-- customer tariff sensitivity
-- anomaly detection and data-quality scoring
-- separate evaluation of FCR-D and aFRR after the Part A core is stable
+Real market spikes and real activation events should usually be retained because they are economically important. Bad meter data, duplicate records, and impossible sensor values should be cleaned, flagged, or excluded.

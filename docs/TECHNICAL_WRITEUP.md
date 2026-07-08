@@ -247,26 +247,101 @@ For this assessment, the candidate scheduler is preferable because it is:
 - sufficient for the representative-day FCR-N versus mFRR comparison
 - explicit about assumptions and trade-offs
 
-## 14. What I Would Do With More Time
+## 14. Future Production Modelling Roadmap
 
-The next extensions would be:
+The current model uses a transparent representative-day scheduler. That is appropriate for Part A, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
 
-- run a multi-day 15-minute backtest
-- add explicit terminal SOC policy
-- use measured C&I load profiles
-- estimate mFRR activation probability from a longer history
-- add break-even charts for activation probability, price spread, and battery size
-- test FCR-D and aFRR only after the FCR-N versus mFRR core is stable
-- reformulate the candidate scheduler as a MILP once the modelling assumptions are validated
+The production system should use at least two years of hourly or 15-minute site, market, weather, and activation data. This is needed because battery value depends on repeated temporal patterns: customer operating schedules, seasonal PV output, spot-price volatility, reserve-price regimes, and mFRR activation frequency.
+
+The ML layer should not replace the optimizer. It should provide forecasts and scenario inputs into the constrained dispatch model.
+
+```text
+Historical data
+    -> data quality and anomaly checks
+    -> forecasting / ML models
+    -> load, PV, price, and activation scenarios
+    -> constrained battery optimizer
+    -> dispatch and bidding decision
+```
+
+### Where ML would help
+
+| Problem                         | Recommended method                                                                  | When to use                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Site load forecasting           | Time-series regression, gradient boosting, random forest, or temporal neural models | Use when measured C&I load history is available and peak prediction affects local savings |
+| PV forecasting                  | Weather-aware regression or time-series models                                      | Use when PV uncertainty affects battery charging and SOC planning                         |
+| Spot-price forecasting          | Regression, gradient boosting, or probabilistic forecasting                         | Use when arbitrage and high-price discharge are material value drivers                    |
+| FCR-N price forecasting         | Regression or quantile forecasting                                                  | Use to estimate expected reserve value before committing capacity                         |
+| mFRR capacity-price forecasting | Regression or probabilistic forecasting                                             | Use when choosing between FCR-N and mFRR capacity commitments                             |
+| mFRR activation probability     | Classification or calibrated probability model                                      | Use when activation uncertainty materially affects SOC and local savings                  |
+| mFRR activation price / volume  | Regression or quantile model                                                        | Use to estimate expected activation value and downside risk                               |
+| Anomaly detection               | Rule-based checks, robust statistics, isolation forest, or autoencoder-style models | Use before training and optimization to identify corrupted meter or market data           |
+
+### Regression use cases
+
+Regression models are useful when the target is a continuous value.
+
+Examples:
+
+* next-hour site load in kW
+* PV generation in kW
+* spot price in EUR/MWh
+* FCR-N price in EUR/MW/h
+* mFRR capacity price in EUR/MW/h
+* expected mFRR activation price in EUR/MWh
+* expected peak import without dispatch
+
+For an initial production version, gradient boosting or random forest regression would be practical because these models handle non-linear effects, lag features, calendar features, and weather inputs without requiring a large deep-learning setup.
+
+### Classification use cases
+
+Classification models are useful when the target is an event probability.
+
+Examples:
+
+* probability that mFRR is activated in a given hour
+* probability that the site exceeds a peak threshold
+* probability that PV generation is materially below forecast
+* probability of a market-price spike
+
+For mFRR activation, the useful output is not a hard yes/no prediction. The optimizer needs a calibrated probability that can be used in expected-value and risk calculations.
+
+### Anomaly handling
+
+Anomaly detection should run before forecasting and optimization.
+
+Examples of bad data include:
+
+* duplicate timestamps
+* missing 15-minute intervals
+* impossible negative load
+* impossible PV output
+* meter resets
+* flatlined sensor values
+* parsing errors in price data
+* inconsistent zone mapping
+
+Not all anomalies should be removed. Real price spikes and real mFRR activations are economically important and should usually be retained. The data layer should distinguish corrupted records from rare but valid market events.
+
+### Evaluation
+
+Forecast accuracy alone is not enough. The production metric should be dispatch value.
+
+The forecasting layer should be evaluated through backtests that measure:
+
+* local customer savings
+* peak exposure
+* FCR-N revenue
+* mFRR capacity and activation value
+* SOC feasibility
+* reserve-readiness violations
+* downside risk under activation uncertainty
+
+The next modelling step is therefore a multi-day or multi-season backtest where forecasts feed the optimizer and the resulting dispatch is compared against FCR-N-only, local-only, and stacked strategies.
 
 ## 15. Conclusion
 
 The Part A result is not "mFRR always wins." The result is:
-
-```text
-FCR-N-only is a stable benchmark.
-mFRR helps when activation exposure is low or well compensated.
-mFRR hurts when activation consumes SOC needed for local customer value.
-```
-
-That is the operating trade-off the model is designed to expose.
+- FCR-N-only is a stable benchmark.
+- mFRR helps when activation exposure is low or well compensated.
+- mFRR hurts when activation consumes SOC needed for local customer value.

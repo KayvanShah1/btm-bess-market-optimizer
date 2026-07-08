@@ -6,11 +6,11 @@ B3 is treated as an operational break-even analysis first:
 
 > When is stacked FCR-N + mFRR better than FCR-N-only?
 
-It is not a full battery investment-payback model. The battery is assumed to already exist and be prequalified, consistent with the assignment framing.
+It is not a full battery investment-payback model. The battery is assumed to already exist and be prequalified, consistent with the modelling scope.
 
 ## Method
 
-The B3 script reuses the Part A dispatch engine and varies three assumptions:
+The B3 script reuses the core dispatch engine and varies three assumptions:
 
 | Variable | Grid |
 |---|---:|

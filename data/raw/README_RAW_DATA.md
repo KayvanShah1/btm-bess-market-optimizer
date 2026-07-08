@@ -1,4 +1,4 @@
-# Raw data bundle for Truxel BESS assignment
+# Raw data bundle
 
 This bundle uses source-aware filename prefixes.
 

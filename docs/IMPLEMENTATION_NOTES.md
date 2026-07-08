@@ -44,7 +44,7 @@ sequenceDiagram
 
     Runner->>Inputs: Request representative-day inputs
     Inputs-->>Runner: Return hourly model inputs
-    Runner->>Scenarios: Start Part A scenario run
+    Runner->>Scenarios: Start scenario run
     Scenarios->>Baselines: Build no-battery, local-only, and FCR-N-only cases
     Scenarios->>Scheduler: Build low, base, and high activation stacked cases
     Scenarios->>Metrics: Summarize value and feasibility
@@ -130,7 +130,7 @@ uv run pytest
 
 ## 8. Intentional Exclusions
 
-The following are not implemented in the current Part A model:
+The following are not implemented in the current core model:
 
 - FCR-D
 - aFRR
@@ -140,4 +140,4 @@ The following are not implemented in the current Part A model:
 - multi-day degradation optimization
 - production bidding strategy
 
-They are left as future extensions because the assessment's core required task is the FCR-N versus mFRR commitment decision under local savings and battery constraints.
+They are left as future extensions because the current scope is the FCR-N versus mFRR commitment decision under local savings and battery constraints.

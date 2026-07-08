@@ -6,7 +6,7 @@ Battery assets create value in 2 layers.
 
 The 1st layer is local customer value: reducing grid import, shaving peaks, improving PV self-consumption, and lowering the customer's power bill. This is the value stream that protects the customer relationship, so it must come first.
 
-The 2nd layer is grid-service revenue. FCR-N is the stable benchmark service in this assignment. It uses available battery capacity for frequency containment revenue while still preserving the local savings case. mFRR is the new opportunity, but it is harder to schedule because activation is uncertain. If mFRR is activated, it can consume battery SOC that may be needed later for peak shaving or high-price discharge.
+The 2nd layer is grid-service revenue. FCR-N is the stable benchmark service in this model. It uses available battery capacity for frequency containment revenue while still preserving the local savings case. mFRR is the new opportunity, but it is harder to schedule because activation is uncertain. If mFRR is activated, it can consume battery SOC that may be needed later for peak shaving or high-price discharge.
 
 The operating question is therefore not simply whether mFRR has revenue. The question is:
 
@@ -97,7 +97,7 @@ This is a screening result from one representative day. It should be used to def
 
 - mFRR activation uncertainty is the key risk driver.
 - A representative day cannot prove multi-season profitability.
-- Synthetic C&I load is useful for assessment clarity, but measured customer profiles are needed before production use.
+- Synthetic C&I load is useful for model clarity, but measured customer profiles are needed before production use.
 - The current model is hourly; 15-minute settlement and activation dynamics need finer production modelling.
 - Residual peak exposure is reported rather than hidden. The model prevents market commitments from creating additional peak exposure when battery capacity remains available, but a 1 MW / 2 MWh battery cannot physically eliminate every baseline peak under all SOC and reserve constraints.
 

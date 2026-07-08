@@ -24,6 +24,6 @@ uv run --package bess-optimizer python scripts/run_part_a_model.py
 uv run --package bess-optimizer python scripts/run_b3_sensitivity.py
 ```
 
-The dashboard is a review surface for the Part A model and the B3 break-even
+The dashboard is a review surface for the core model and the B3 break-even
 sensitivity. The deeper methodology is documented in
 `../../docs/TECHNICAL_WRITEUP.md` and `../../docs/B3_BREAK_EVEN_ANALYSIS.md`.

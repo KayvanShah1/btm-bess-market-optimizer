@@ -12,11 +12,11 @@ The data layer builds a representative day for testing a behind-the-meter batter
 | Spot bidding zone | SE3 |
 | mFRR zone approximation | SN3 |
 | Canonical processed resolution | 15 minutes |
-| Part A model resolution | Hourly |
+| Core model resolution | Hourly |
 | Site type | Representative Swedish C&I light-factory profile |
 | PV capacity scaling | 800 kW |
 
-The hourly model is used for Part A because the assignment allows 24 hourly steps and the smaller model is easier to review. The 15-minute processed file is retained as the cleaner canonical data layer for future extension.
+The hourly model is used because 24 hourly steps keep the representative-day result compact and easy to review. The 15-minute processed file is retained as the cleaner canonical data layer for future extension.
 
 ## 3. Data Pipeline
 
@@ -27,17 +27,17 @@ flowchart TD
     C --> D[Join load, PV, spot, FCR-N, and mFRR signals]
     D --> E[Create canonical representative-day dataset]
     E --> F[Aggregate to hourly model inputs]
-    F --> G[Run Part A optimizer]
+    F --> G[Run core optimizer]
     G --> H[Create dispatch, summary, and audit outputs]
 ```
 
 ## 4. Data Sourcing and Access
 
-The assignment does not provide proprietary Truxel data, so the dataset is built from public, manually exported, and synthetic representative inputs. The sources are used to create a realistic representative day rather than a settlement-grade market reconstruction.
+The project does not use proprietary company or customer data, so the dataset is built from public, manually exported, and synthetic representative inputs. The sources are used to create a realistic representative day rather than a settlement-grade market reconstruction.
 
 | Data input | Source / access path | How it is used | Notes |
 |---|---|---|---|
-| C&I site load | Synthetic representative profile created for this assignment | Primary behind-the-meter factory demand profile | Not customer-metered data; used to create a realistic C&I operating shape |
+| C&I site load | Synthetic representative profile created for this project | Primary behind-the-meter factory demand profile | Not customer-metered data; used to create a realistic C&I operating shape |
 | PV production shape | eSett Open Data production profile | Normalized and scaled to an 800 kW site PV profile | Used as a public solar-shape proxy, not as site-metered PV |
 | Spot price | Nord Pool day-ahead price reference for SE3, with Svenska Kraftnät spot data as fallback/reference | Customer energy cost, high-price discharge, low-price charging, and mFRR replacement-cost proxy | Nord Pool is the main Nordic day-ahead market reference; SE3 is used as the spot bidding zone |
 | FCR-N capacity price | Svenska Kraftnät Mimer market data | FCR-N reserve capacity revenue | Used for the FCR-N benchmark and stacked reserve allocation |
@@ -93,7 +93,7 @@ flowchart LR
     B --> C{Surplus PV?}
     C -->|Yes| D[Charge battery if SOC headroom exists]
     C -->|No| E[Grid or battery serves remaining load]
-    D --> F[Remaining surplus is outside core Part A value stream]
+    D --> F[Remaining surplus is outside the core value stream]
 ```
 
 PV export optimization is not included as a core value stream. The focus is local self-consumption, grid-import reduction, peak shaving, and reserve-market participation.
@@ -124,7 +124,7 @@ The data build writes:
 | File | Rows | Purpose |
 |---|---:|---|
 | `data/processed/representative_day_15min_se3_20260624.csv` | 96 | Canonical processed representative-day dataset |
-| `data/processed/representative_day_hourly_se3_20260624.csv` | 24 | Main Part A model input |
+| `data/processed/representative_day_hourly_se3_20260624.csv` | 24 | Main core model input |
 
 Rebuild with:
 
@@ -134,7 +134,7 @@ uv run --package bess-optimizer python scripts/build_processed_dataset.py
 
 ## 10. Model Outputs
 
-The Part A model writes:
+The core model writes:
 
 | File | Purpose |
 |---|---|
@@ -148,18 +148,18 @@ Current limitations are:
 
 - one representative day only
 - synthetic representative site load
-- hourly Part A model
+- hourly core model
 - approximate SE3 / SN3 alignment
 - no settlement-grade market reconstruction
 - no measured customer meter data
 - no PV forecast uncertainty
 - no multi-day terminal SOC policy
 
-These limitations are acceptable for the assessment objective because the main task is to reason clearly about FCR-N versus mFRR commitment under local savings, peak protection, SOC, and activation uncertainty.
+These limitations are acceptable for the current modelling objective because the main task is to reason clearly about FCR-N versus mFRR commitment under local savings, peak protection, SOC, and activation uncertainty.
 
 ## 12. Future Data Requirements
 
-The current Part A model uses one representative day to keep the assignment solution transparent and reviewable. A production version should be trained and backtested on a larger historical dataset, ideally at least two years of hourly or 15-minute observations.
+The current core model uses one representative day to keep the result transparent and reviewable. A production version should be trained and backtested on a larger historical dataset, ideally at least two years of hourly or 15-minute observations.
 
 At least two years of history would help capture:
 

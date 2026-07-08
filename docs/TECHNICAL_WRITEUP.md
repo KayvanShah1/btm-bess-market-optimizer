@@ -2,7 +2,7 @@
 
 ## 1. Problem Framing
 
-The assignment asks how a single behind-the-meter battery should allocate capacity between local customer value, FCR-N, and mFRR for a representative day.
+This project models how a single behind-the-meter battery should allocate capacity between local customer value, FCR-N, and mFRR for a representative day.
 
 The difficult part is not simply adding another revenue stream. FCR-N and mFRR compete for the same MW capacity and SOC headroom that local peak shaving and energy-cost savings also need. mFRR activation is uncertain, and if activation consumes battery energy, later customer-side savings can fall.
 
@@ -12,14 +12,14 @@ The model therefore answers:
 
 ## 2. Model Scope
 
-This is an intentionally scoped Part A implementation:
+This is an intentionally scoped representative-day implementation:
 
 | Item | Current scope |
 |---|---|
 | Asset | One 1 MW / 2 MWh behind-the-meter battery |
 | Site | Representative Swedish C&I light-factory profile with PV |
 | Market area | SE3 spot / FCR-N, SN3 mFRR signal alignment |
-| Resolution | Hourly optimization for Part A |
+| Resolution | Hourly optimization for the core model |
 | Horizon | One representative day, 2026-06-24 |
 | Main comparison | FCR-N-only vs stacked FCR-N + mFRR |
 | Uncertainty | Low, base, and high mFRR activation assumptions |
@@ -36,7 +36,7 @@ The main assumptions used by the model are:
 | Efficiency | Charge and discharge efficiency are each 95% |
 | Site | Representative Swedish C&I light-factory load profile with co-located PV |
 | Date and zone | One representative day, 2026-06-24, using SE3 spot/FCR-N and SN3 mFRR alignment |
-| Resolution | Hourly dispatch model for the assignment; 15-minute data is retained as source data |
+| Resolution | Hourly dispatch model for the current representative-day scope; 15-minute data is retained as source data |
 | Local priority | PV self-consumption, local dispatch, and local reserve are handled before market allocation |
 | Markets | FCR-N capacity and mFRR up-capacity are modelled; FCR-D and aFRR are excluded |
 | mFRR uncertainty | Activation is represented through scenario probabilities and the B3 sensitivity grid |
@@ -75,7 +75,7 @@ The main hourly decision quantities are:
 | `fcr_h` | FCR-N committed capacity |
 | `mfrr_h` | mFRR committed up-capacity |
 
-The current scheduler chooses `fcr_h` and `mfrr_h` after local dispatch, rather than solving all variables simultaneously in a MILP. That choice is deliberate: the problem size is small, the candidate grid is easy to audit, and the assignment rewards clear reasoning more than solver complexity.
+The current scheduler chooses `fcr_h` and `mfrr_h` after local dispatch, rather than solving all variables simultaneously in a MILP. That choice is deliberate: the problem size is small, the candidate grid is easy to audit, and this project prioritizes transparent reasoning over solver complexity.
 
 ## 5. Objective
 
@@ -102,7 +102,7 @@ Expected mFRR activation value is calculated from activation price, spot-price r
 
 ## 6. Constraints
 
-The model maps the assignment constraints as follows:
+The model maps the operating constraints as follows:
 
 | Assignment rule | Implementation |
 |---|---|
@@ -245,7 +245,7 @@ The base and high activation cases underperform FCR-N-only by 29.16 EUR and 49.0
 
 ## 13. B3 Operational Break-Even Extension
 
-B3 extends Part A from "what happened on this representative day?" to:
+B3 extends the representative-day result from "what happened on this day?" to:
 
 > Under what activation and price assumptions would mFRR remain worthwhile?
 
@@ -279,7 +279,7 @@ Residual peak exposure remains in the results because the battery is capacity an
 
 A MILP would be a natural production extension. It would be especially useful for multi-day, 15-minute, multi-market optimization with terminal SOC constraints and forecast uncertainty.
 
-For this assessment, the candidate scheduler is preferable because it is:
+For this scope, the candidate scheduler is preferable because it is:
 
 - transparent
 - small enough to audit manually
@@ -289,7 +289,7 @@ For this assessment, the candidate scheduler is preferable because it is:
 
 ## 16. What I Would Do With More Time: Production Modelling Roadmap
 
-The current model uses a transparent representative-day scheduler. That is appropriate for Part A, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
+The current model uses a transparent representative-day scheduler. That is appropriate for the current one-day model, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
 
 The production system should use at least two years of hourly or 15-minute site, market, weather, and activation data. This is needed because battery value depends on repeated temporal patterns: customer operating schedules, seasonal PV output, spot-price volatility, reserve-price regimes, and mFRR activation frequency.
 
@@ -374,7 +374,7 @@ The next modelling step is therefore a multi-day or multi-season backtest where 
 
 ## 17. Conclusion
 
-The Part A result is not "mFRR always wins." The result is:
+The core result is not "mFRR always wins." The result is:
 
 - FCR-N-only is a stable benchmark.
 - mFRR helps when activation exposure is low or well compensated.

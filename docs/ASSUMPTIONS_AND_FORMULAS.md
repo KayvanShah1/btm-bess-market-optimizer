@@ -1,34 +1,34 @@
 # Assumptions and Formula Glossary
 
-This document consolidates the main modelling assumptions, simplifications, formulas, and variable definitions used across the Part A optimizer and B3 operational break-even analysis.
+This document consolidates the main modelling assumptions, simplifications, formulas, and variable definitions used across the core optimizer and B3 operational break-even analysis.
 
-The goal is to make the model reviewable. The implementation is intentionally scoped for a representative-day take-home assignment, not a production-grade bidding platform.
+The goal is to make the model reviewable. The implementation is intentionally scoped for representative-day analysis, not a production-grade bidding platform.
 
 ---
 
 ## 1. Core Modelling Assumptions
 
-| Area | Current assumption | Why it is acceptable for this assignment | Real-world production treatment |
+| Area | Current assumption | Why it is acceptable here | Real-world production treatment |
 |---|---|---|---|
-| Asset size | Base asset is one 1 MW / 2 MWh behind-the-meter battery. | This matches the assignment default and keeps the comparison easy to audit. | Use actual asset rating, inverter limits, connection limits, degradation profile, warranty constraints, and prequalification status. |
+| Asset size | Base asset is one 1 MW / 2 MWh behind-the-meter battery. | This creates a clear base case and keeps the comparison easy to audit. | Use actual asset rating, inverter limits, connection limits, degradation profile, warranty constraints, and prequalification status. |
 | SOC limits | SOC operates between 0.2 MWh and 1.8 MWh for the 2 MWh battery. | Keeps headroom for reserve response and avoids using the full theoretical battery range. | Use manufacturer warranty limits, degradation-aware SOC windows, site operating policy, and service-specific reserve requirements. |
 | Initial SOC | Initial SOC is 1.0 MWh. | Starts the representative day from the midpoint of the usable range. | Use rolling multi-day optimization with terminal SOC policy and forecasted next-day value. |
 | Battery efficiency | Charge and discharge efficiency are both 95%. | Simple but realistic enough for comparing strategies. | Use asset-specific round-trip efficiency, temperature effects, degradation, and part-load efficiency curves. |
 | Degradation cost | Degradation proxy is 3 EUR/MWh. | Adds a small cost to activation/discharge without requiring full battery-aging modelling. | Use cycle-depth-dependent degradation, throughput cost, warranty limits, replacement cost, and augmentation planning. |
-| Representative day | The model uses one representative day: 2026-06-24. | The assignment asks for a representative day and rewards clear reasoning over production breadth. | Backtest across multiple years, seasons, weekdays/weekends, holidays, and market regimes. |
-| Resolution | Part A optimization is hourly. The data pipeline also retains a 15-minute processed dataset. | The assignment allows 24 hourly steps and hourly results are easier to review. | Use 15-minute or finer resolution for settlement, activation, SOC restoration, and reserve-readiness modelling. |
+| Representative day | The model uses one representative day: 2026-06-24. | A one-day horizon keeps the operating trade-offs transparent. | Backtest across multiple years, seasons, weekdays/weekends, holidays, and market regimes. |
+| Resolution | The core optimization is hourly. The data pipeline also retains a 15-minute processed dataset. | Twenty-four hourly steps keep the representative-day results easy to review. | Use 15-minute or finer resolution for settlement, activation, SOC restoration, and reserve-readiness modelling. |
 | Site load | C&I load is a synthetic representative light-factory profile. | Avoids proprietary customer data while still creating a non-trivial behind-the-meter case. | Use measured customer meter data, operating calendars, production schedules, and site-specific load forecasts. |
 | PV profile | PV is based on a public production shape and scaled to 800 kW. | Gives realistic PV overlap without requiring site-metered PV. | Use measured PV, irradiance, cloud cover, weather forecasts, inverter clipping, and export limits. |
 | Market zones | Spot/FCR-N use SE3 and mFRR uses SN3 approximation. | Allows a coherent representative Swedish market case. | Use exact bidding zones, product zones, settlement areas, and TSO-specific mapping rules. |
 | FCR-N treatment | FCR-N is modelled as capacity revenue requiring SOC headroom. | FCR-N is the main benchmark and does not require scheduled energy dispatch in this model. | Include actual bid acceptance, price uncertainty, activation energy effects, product rules, and performance penalties. |
-| mFRR treatment | mFRR is modelled as up-capacity plus expected activation value and expected SOC impact. | Directly addresses the assignment's core uncertainty: activation can help or hurt. | Simulate physical activation events, restoration windows, bid acceptance, activation duration, imbalance exposure, and TSO settlement rules. |
-| mFRR activation uncertainty | Part A uses low, base, and high activation assumptions. B3 sweeps activation probability from 0% to 75%. | Makes activation risk visible without building a full stochastic optimizer. | Estimate calibrated activation probabilities from multi-year activation history and evaluate P10/P50/P90 outcomes. |
-| Local-first operation | Local dispatch and local reserve are applied before reserve-market allocation. | Matches the assignment principle that customer savings come first and market revenue follows. | Encode customer contract terms directly, including guaranteed savings, demand charges, tariff windows, and service-level risk limits. |
+| mFRR treatment | mFRR is modelled as up-capacity plus expected activation value and expected SOC impact. | Directly addresses the core uncertainty: activation can help or hurt. | Simulate physical activation events, restoration windows, bid acceptance, activation duration, imbalance exposure, and TSO settlement rules. |
+| mFRR activation uncertainty | The core model uses low, base, and high activation assumptions. B3 sweeps activation probability from 0% to 75%. | Makes activation risk visible without building a full stochastic optimizer. | Estimate calibrated activation probabilities from multi-year activation history and evaluate P10/P50/P90 outcomes. |
+| Local-first operation | Local dispatch and local reserve are applied before reserve-market allocation. | Matches the operating principle that customer savings come first and market revenue follows. | Encode customer contract terms directly, including guaranteed savings, demand charges, tariff windows, and service-level risk limits. |
 | Peak shaving | Peak shaving is represented with a configurable peak-import threshold and peak-tariff proxy. | Captures the customer-cost protection mechanism without needing a real tariff sheet. | Use actual customer tariff, contracted demand limit, measured peak charge rules, grid connection limit, and penalty structure. |
 | Peak threshold | Threshold is derived from the representative-day net-load quantile. | Creates a consistent threshold for comparing no-battery, local-only, FCR-only, and stacked cases. | Use customer-specific contractual threshold, historical peak baseline, or optimized threshold from tariff economics. |
 | Residual peak exposure | Residual exposure is reported when the battery cannot physically eliminate all peak load. | Avoids hiding infeasible peak reduction. | Use multi-day planning, explicit reserve margin, and tariff-specific risk limits. |
 | Shared battery capacity | Local use, local reserve, FCR-N, and mFRR share the same MW limit. | Prevents double-counting a single physical battery. | Include all compatible/incompatible product combinations, product de-rates, connection limits, and real-time availability constraints. |
-| FCR-D and aFRR | Excluded from the active optimizer and B3 grid. | Part A is explicitly focused on FCR-N versus mFRR. | Add FCR-D up/down, FCR-D pairing de-rate, aFRR, and product-specific rules after the FCR-N/mFRR core is validated. |
+| FCR-D and aFRR | Excluded from the active optimizer and B3 grid. | The current optimizer is focused on FCR-N versus mFRR. | Add FCR-D up/down, FCR-D pairing de-rate, aFRR, and product-specific rules after the FCR-N/mFRR core is validated. |
 | B3 battery-count sweep | B3 scales 1, 2, and 3 identical 1 MW / 2 MWh units at the same site. | Tests whether more MW/MWh changes the mFRR break-even result. | Model each asset separately with site connection limits, separate prequalification, metering, and customer load context. |
 
 ---
@@ -293,7 +293,7 @@ This means peak shaving is included, but it is not a full customer-tariff optimi
 
 This file does not claim that the representative-day result is a production forecast or a full commercial case.
 
-The current model is designed to answer the assignment question:
+The current model is designed to answer the modelling question:
 
 > When does adding mFRR improve value over FCR-N only, and when does it reduce value by consuming local flexibility?
 

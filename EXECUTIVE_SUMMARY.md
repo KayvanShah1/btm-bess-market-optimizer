@@ -49,13 +49,11 @@ The larger battery cases do not automatically improve the mFRR decision because 
 
 The commercial payback overlay is intentionally narrower than full battery CAPEX recovery. It asks how long incremental mFRR value would take to recover mFRR enablement and operating cost. With the default assumptions, the best grid cell has an 18.6-year payback because the annual operating cost plus risk buffer consumes most of the annualized incremental value.
 
-## What This Means for Truxel
+## What This Means?
 
 The operating policy should not be "always stack mFRR when available." A better commercial rule is:
 
-```text
-Accept mFRR only when expected capacity and activation value clearly exceed the value of the local flexibility it consumes.
-```
+> Accept mFRR only when expected capacity and activation value clearly exceed the value of the local flexibility it consumes.
 
 This matters because the customer relationship is anchored on local savings and peak protection. Ancillary-service revenue is the larger opportunity, but it should not weaken the customer's bill-savings promise.
 

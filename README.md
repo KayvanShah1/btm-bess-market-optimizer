@@ -38,6 +38,12 @@ Run the Part A model:
 uv run --package bess-optimizer python scripts/run_part_a_model.py
 ```
 
+Run the B3 break-even sensitivity:
+
+```powershell
+uv run --package bess-optimizer python scripts/run_b3_sensitivity.py
+```
+
 Run the Streamlit dashboard:
 
 ```powershell
@@ -49,11 +55,13 @@ The model writes:
 - `data/output/part_a_dispatch_hourly_se3_20260624.csv`
 - `data/output/part_a_scenario_summary_se3_20260624.csv`
 - `data/output/part_a_constraint_audit_se3_20260624.csv`
+- `data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv`
 
 ## Submission Documents
 
 - [Executive summary](EXECUTIVE_SUMMARY.md)
 - [Technical write-up](docs/TECHNICAL_WRITEUP.md)
+- [B3 break-even analysis](docs/B3_BREAK_EVEN_ANALYSIS.md)
 - [Data method](docs/DATA_METHOD.md)
 - [Implementation notes](docs/IMPLEMENTATION_NOTES.md)
 - [Dashboard notes](apps/dashboard/README.md)

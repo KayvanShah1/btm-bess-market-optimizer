@@ -227,7 +227,31 @@ The stacked low-activation case improves total value by 16.38 EUR versus FCR-N-o
 
 The base and high activation cases underperform FCR-N-only by 29.16 EUR and 49.03 EUR. In these cases, expected mFRR activation consumes SOC, reducing later local savings. The result is economically useful: mFRR participation should be conditional on activation exposure and opportunity cost, not simply enabled whenever prequalification exists.
 
-## 12. Constraint Audit
+## 12. B3 Operational Break-Even Extension
+
+B3 extends Part A from "what happened on this representative day?" to:
+
+```text
+Under what activation and price assumptions would mFRR remain worthwhile?
+```
+
+The B3 analysis uses an operational break-even rule, not full battery CAPEX payback:
+
+```text
+stacked_total_value_eur - fcr_only_total_value_eur > 0
+```
+
+The first grid varies mFRR activation probability from 0% to 75% and mFRR capacity price from 0.50x to 2.00x. It writes:
+
+```text
+data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv
+```
+
+The initial grid has 112 cells. Eight cells beat FCR-N-only. At the current 1.00x mFRR capacity price, only the 0% activation case is positive. At 5% activation, the grid requires a 2.00x capacity-price multiplier to become positive. Above 5% activation, no tested cell beats FCR-N-only.
+
+The full B3 note is in `docs/B3_BREAK_EVEN_ANALYSIS.md`. It also includes a small commercial overlay for incremental mFRR enablement cost, annual operating cost, and risk buffer. That overlay is intentionally separate from the core operational B3 result.
+
+## 13. Constraint Audit
 
 All six scenarios have 24 feasible rows and zero reported violations.
 
@@ -235,7 +259,7 @@ The maximum total reserved or used capacity is 1.0 MW for active battery scenari
 
 Residual peak exposure remains in the results because the battery is capacity and energy constrained. This is expected and documented. The model's protection rule is that market commitments should not create extra peak exposure when battery discharge capacity remains available.
 
-## 13. Why Not a Full MILP
+## 14. Why Not a Full MILP
 
 A MILP would be a natural production extension. It would be especially useful for multi-day, 15-minute, multi-market optimization with terminal SOC constraints and forecast uncertainty.
 
@@ -247,7 +271,7 @@ For this assessment, the candidate scheduler is preferable because it is:
 - sufficient for the representative-day FCR-N versus mFRR comparison
 - explicit about assumptions and trade-offs
 
-## 14. What I Would Do With More Time: Production Modelling Roadmap
+## 15. What I Would Do With More Time: Production Modelling Roadmap
 
 The current model uses a transparent representative-day scheduler. That is appropriate for Part A, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
 
@@ -339,7 +363,7 @@ The forecasting layer should be evaluated through backtests that measure:
 
 The next modelling step is therefore a multi-day or multi-season backtest where forecasts feed the optimizer and the resulting dispatch is compared against FCR-N-only, local-only, and stacked strategies.
 
-## 15. Conclusion
+## 16. Conclusion
 
 The Part A result is not "mFRR always wins." The result is:
 

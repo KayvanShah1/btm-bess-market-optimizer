@@ -61,6 +61,7 @@ The model writes:
 
 - [Executive summary](EXECUTIVE_SUMMARY.md)
 - [Technical write-up](docs/TECHNICAL_WRITEUP.md)
+- [Assumptions and formulas](docs/ASSUMPTIONS_AND_FORMULAS.md)
 - [B3 break-even analysis](docs/B3_BREAK_EVEN_ANALYSIS.md)
 - [Data method](docs/DATA_METHOD.md)
 - [Implementation notes](docs/IMPLEMENTATION_NOTES.md)

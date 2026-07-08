@@ -78,7 +78,7 @@ def render_methodology_tab() -> None:
         },
         {
             "Scenario": "Stacked base activation",
-            "Meaning": "Uses the processed day’s observed/base mFRR activation probability.",
+            "Meaning": "Uses the processed day's observed/base mFRR activation probability.",
         },
         {
             "Scenario": "Stacked high activation",
@@ -126,55 +126,6 @@ def render_methodology_tab() -> None:
         },
     ]
     st.dataframe(break_even_rows, hide_index=True, width="stretch")
-
-    st.markdown('<div class="section-title">Commercial payback overlay</div>', unsafe_allow_html=True)
-
-    with st.container(border=True):
-        st.markdown(
-            """
-            Payback is a secondary overlay on top of the operational result. It estimates how long
-            incremental mFRR value would take to recover enablement and operating costs.
-
-            ```
-            effective_operating_days =
-                operating_days * confidence_factor
-
-            annualized_delta_eur =
-                daily_delta_vs_fcr_only_eur * effective_operating_days
-
-            annual_net_incremental_value_eur =
-                annualized_delta_eur
-              - annual_operating_cost_eur
-              - risk_buffer_eur
-
-            payback_years =
-                upfront_enablement_cost_eur
-                /
-                annual_net_incremental_value_eur
-            ```
-
-            If annual net incremental value is zero or negative, payback is shown as not available.
-            """
-        )
-
-    payback_rows = [
-        {
-            "Diagnostic": "Fixed cost burden per day",
-            "Formula": "(annual operating cost + risk buffer) / effective operating days",
-        },
-        {
-            "Diagnostic": "Required daily delta for target payback",
-            "Formula": (
-                "(upfront cost / target payback years + annual operating cost + risk buffer) "
-                "/ effective operating days"
-            ),
-        },
-        {
-            "Diagnostic": "Gap to target",
-            "Formula": "daily delta vs FCR-only - required daily delta for target payback",
-        },
-    ]
-    st.dataframe(payback_rows, hide_index=True, width="stretch")
 
     st.markdown('<div class="section-title">Constraint logic</div>', unsafe_allow_html=True)
 

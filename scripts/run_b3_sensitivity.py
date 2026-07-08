@@ -12,7 +12,6 @@ from bess_optimizer.sensitivity.b3_break_even import (
     run_b3_break_even_grid,
     summarize_break_even_result,
 )
-from bess_optimizer.sensitivity.finance import FinancialOverlayAssumptions, build_financial_overlay
 
 
 def default_output_path(config: PartAModelConfig) -> Path:
@@ -23,16 +22,10 @@ def default_output_path(config: PartAModelConfig) -> Path:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Run B3 operational mFRR break-even sensitivity and optional payback overlay."
+        description="Run B3 operational mFRR break-even sensitivity."
     )
     parser.add_argument("--input-file", type=Path, default=None)
     parser.add_argument("--output-file", type=Path, default=None)
-    parser.add_argument("--upfront-enable-cost-eur", type=float, default=25_000.0)
-    parser.add_argument("--annual-operating-cost-eur", type=float, default=5_000.0)
-    parser.add_argument("--risk-buffer-eur", type=float, default=2_000.0)
-    parser.add_argument("--operating-days", type=int, default=300)
-    parser.add_argument("--confidence-factor", type=float, default=0.80)
-    parser.add_argument("--target-payback-years", type=float, default=5.0)
     parser.add_argument(
         "--battery-counts",
         default=",".join(str(count) for count in DEFAULT_BATTERY_COUNTS),
@@ -65,23 +58,11 @@ def main() -> None:
         mfrr_capacity_price_multipliers=DEFAULT_MFRR_CAPACITY_PRICE_MULTIPLIERS,
         battery_counts=battery_counts,
     )
-    output_df = build_financial_overlay(
-        operational_df,
-        FinancialOverlayAssumptions(
-            upfront_enablement_cost_eur=args.upfront_enable_cost_eur,
-            annual_operating_cost_eur=args.annual_operating_cost_eur,
-            risk_buffer_eur=args.risk_buffer_eur,
-            operating_days=args.operating_days,
-            confidence_factor=args.confidence_factor,
-            target_payback_years=args.target_payback_years,
-        ),
-    )
-
     output_path = args.output_file or default_output_path(config)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_df.write_csv(output_path)
+    operational_df.write_csv(output_path)
 
-    summary = summarize_break_even_result(output_df)
+    summary = summarize_break_even_result(operational_df)
     print(f"Wrote {output_path}")
     print(f"Grid cells: {summary['cell_count']}")
     print(f"Battery counts: {', '.join(str(count) for count in battery_counts)}")
@@ -92,10 +73,6 @@ def main() -> None:
         "Max activation probability at 1.0x mFRR capacity price: "
         f"{summary['max_activation_probability_at_1x_capacity']}"
     )
-    required_daily_delta = float(output_df["required_daily_delta_for_target_payback_eur"].first())
-    fixed_cost_burden = float(output_df["fixed_cost_burden_eur_per_day"].first())
-    print(f"Fixed operating/risk burden EUR/day: {fixed_cost_burden:.2f}")
-    print(f"Required daily delta for {args.target_payback_years:.1f} year payback EUR: {required_daily_delta:.2f}")
 
 
 if __name__ == "__main__":

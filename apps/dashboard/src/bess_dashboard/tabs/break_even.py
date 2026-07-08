@@ -5,8 +5,8 @@ from html import escape
 import plotly.graph_objects as go
 import polars as pl
 import streamlit as st
+
 from bess_optimizer.sensitivity.b3_break_even import summarize_break_even_result
-from bess_optimizer.sensitivity.finance import FinancialOverlayAssumptions, build_financial_overlay
 
 CHART_CONFIG = {"displayModeBar": False, "responsive": True}
 GRID_COLOR = "rgba(148, 163, 184, 0.25)"
@@ -17,20 +17,6 @@ def format_eur(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"{value:,.0f}"
-
-
-def format_years(value: float | None) -> str:
-    if value is None:
-        return "n/a"
-    if value > 99:
-        return ">99"
-    return f"{value:.1f}"
-
-
-def format_eur_per_day(value: float | None) -> str:
-    if value is None:
-        return "n/a"
-    return f"{value:,.1f} EUR/day"
 
 
 def render_kpi_cards(summary: dict[str, float | int | None]) -> None:
@@ -155,11 +141,10 @@ def detail_rows(df: pl.DataFrame) -> list[dict[str, str]]:
         "mfrr_capacity_price_multiplier",
         "delta_vs_fcr_only_eur",
         "is_mfrr_worthwhile",
-        "annualized_delta_eur",
-        "annual_net_incremental_value_eur",
-        "required_daily_delta_for_target_payback_eur",
-        "payback_gap_to_target_eur_per_day",
-        "payback_years",
+        "stacked_total_value_eur",
+        "fcr_only_total_value_eur",
+        "stacked_local_savings_pct",
+        "stacked_min_soc_mwh",
     ]
     rows = df.select(columns).sort(["activation_probability", "mfrr_capacity_price_multiplier"]).to_dicts()
     return [
@@ -171,94 +156,13 @@ def detail_rows(df: pl.DataFrame) -> list[dict[str, str]]:
             "Capacity multiplier": f"{float(row['mfrr_capacity_price_multiplier']):.2f}x",
             "Daily delta EUR": f"{float(row['delta_vs_fcr_only_eur']):,.2f}",
             "mFRR worthwhile": "Yes" if row["is_mfrr_worthwhile"] else "No",
-            "Annualized delta EUR": f"{float(row['annualized_delta_eur']):,.0f}",
-            "Annual net EUR": f"{float(row['annual_net_incremental_value_eur']):,.0f}",
-            "Required daily delta EUR": f"{float(row['required_daily_delta_for_target_payback_eur']):,.2f}",
-            "Gap to target EUR/day": f"{float(row['payback_gap_to_target_eur_per_day']):,.2f}",
-            "Payback years": format_years(row["payback_years"]),
+            "Stacked value EUR": f"{float(row['stacked_total_value_eur']):,.2f}",
+            "FCR-only value EUR": f"{float(row['fcr_only_total_value_eur']):,.2f}",
+            "Stacked local savings": f"{float(row['stacked_local_savings_pct']):.1%}",
+            "Minimum SOC MWh": f"{float(row['stacked_min_soc_mwh']):.2f}",
         }
         for row in rows
     ]
-
-
-def render_financial_controls() -> FinancialOverlayAssumptions:
-    st.markdown('<div class="section-title">Commercial payback overlay</div>', unsafe_allow_html=True)
-    with st.container(border=True):
-        columns = st.columns(3, gap="medium")
-        upfront_cost = columns[0].number_input(
-            "Enablement cost EUR",
-            min_value=0.0,
-            value=25_000.0,
-            step=1_000.0,
-        )
-        annual_cost = columns[1].number_input(
-            "Annual operating cost EUR",
-            min_value=0.0,
-            value=5_000.0,
-            step=500.0,
-        )
-        risk_buffer = columns[2].number_input(
-            "Risk buffer EUR",
-            min_value=0.0,
-            value=2_000.0,
-            step=500.0,
-        )
-        columns = st.columns(3, gap="medium")
-        operating_days = columns[0].number_input(
-            "Operating days",
-            min_value=1,
-            max_value=366,
-            value=300,
-            step=1,
-        )
-        confidence_factor = columns[1].number_input(
-            "Confidence factor",
-            min_value=0.1,
-            max_value=1.0,
-            value=0.80,
-            step=0.05,
-        )
-        target_payback_years = columns[2].number_input(
-            "Target payback years",
-            min_value=0.5,
-            max_value=30.0,
-            value=5.0,
-            step=0.5,
-        )
-
-    return FinancialOverlayAssumptions(
-        upfront_enablement_cost_eur=float(upfront_cost),
-        annual_operating_cost_eur=float(annual_cost),
-        risk_buffer_eur=float(risk_buffer),
-        operating_days=int(operating_days),
-        confidence_factor=float(confidence_factor),
-        target_payback_years=float(target_payback_years),
-    )
-
-
-def render_payback_summary(break_even_df: pl.DataFrame) -> None:
-    best_row = break_even_df.sort("delta_vs_fcr_only_eur", descending=True).to_dicts()[0]
-    with st.container(border=True):
-        columns = st.columns(4, gap="medium")
-        columns[0].metric("Best payback", format_years(best_row["payback_years"]), "years")
-        columns[1].metric(
-            "Required daily delta",
-            format_eur_per_day(best_row["required_daily_delta_for_target_payback_eur"]),
-            f"{float(best_row['target_payback_years']):.1f} year target",
-        )
-        columns[2].metric(
-            "Best daily delta",
-            format_eur_per_day(best_row["delta_vs_fcr_only_eur"]),
-            f"{float(best_row['payback_gap_to_target_eur_per_day']):+,.1f} EUR/day",
-        )
-        columns[3].metric(
-            "Fixed cost burden",
-            format_eur_per_day(best_row["fixed_cost_burden_eur_per_day"]),
-            "operating + risk",
-        )
-
-    if best_row["payback_years"] is None:
-        st.info("No grid cell clears the selected annual operating cost and risk-buffer assumptions.")
 
 
 def render_break_even_tab(raw_break_even_df: pl.DataFrame) -> None:
@@ -289,9 +193,5 @@ def render_break_even_tab(raw_break_even_df: pl.DataFrame) -> None:
         st.markdown('<div class="section-title">Break-even threshold by activation rate</div>', unsafe_allow_html=True)
         st.dataframe(threshold_rows, hide_index=True, width="stretch")
 
-    assumptions = render_financial_controls()
-    break_even_df = build_financial_overlay(selected_df, assumptions)
-    render_payback_summary(break_even_df)
-
-    with st.expander(f"Sensitivity grid rows ({break_even_df.height:,} rows)"):
-        st.dataframe(detail_rows(break_even_df), hide_index=True, width="stretch")
+    with st.expander(f"Sensitivity grid rows ({selected_df.height:,} rows)"):
+        st.dataframe(detail_rows(selected_df), hide_index=True, width="stretch")

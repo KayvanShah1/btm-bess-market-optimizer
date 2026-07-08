@@ -8,10 +8,7 @@ The difficult part is not simply adding another revenue stream. FCR-N and mFRR c
 
 The model therefore answers:
 
-```text
-When does adding mFRR improve value over FCR-N only,
-and when does it reduce value by consuming local flexibility?
-```
+> When does adding mFRR improve value over FCR-N only, and when does it reduce value by consuming local flexibility?
 
 ## 2. Model Scope
 
@@ -29,7 +26,26 @@ This is an intentionally scoped Part A implementation:
 
 The model is not claimed to be a production-grade stochastic optimizer. It is a transparent representative-day scheduler designed to expose the local-savings versus reserve-market trade-off.
 
-## 3. Decision Structure
+## 3. Core Assumptions
+
+The main assumptions used by the model are:
+
+| Area | Assumption |
+|---|---|
+| Battery | Base asset is one 1 MW / 2 MWh BESS with 1.0 MWh initial SOC, 0.2 MWh minimum SOC, and 1.8 MWh maximum SOC |
+| Efficiency | Charge and discharge efficiency are each 95% |
+| Site | Representative Swedish C&I light-factory load profile with co-located PV |
+| Date and zone | One representative day, 2026-06-24, using SE3 spot/FCR-N and SN3 mFRR alignment |
+| Resolution | Hourly dispatch model for the assignment; 15-minute data is retained as source data |
+| Local priority | PV self-consumption, local dispatch, and local reserve are handled before market allocation |
+| Markets | FCR-N capacity and mFRR up-capacity are modelled; FCR-D and aFRR are excluded |
+| mFRR uncertainty | Activation is represented through scenario probabilities and the B3 sensitivity grid |
+| B3 battery sweep | Battery count scales aggregate MW, MWh, initial SOC, and SOC limits at the same site; it does not change the customer load profile |
+| B3 break-even | B3 tests operational value versus FCR-N-only, not battery investment payback |
+
+The consolidated assumptions and formulas are listed in `docs/ASSUMPTIONS_AND_FORMULAS.md`.
+
+## 4. Decision Structure
 
 For each hour, the model builds the schedule in two layers:
 
@@ -61,7 +77,7 @@ The main hourly decision quantities are:
 
 The current scheduler chooses `fcr_h` and `mfrr_h` after local dispatch, rather than solving all variables simultaneously in a MILP. That choice is deliberate: the problem size is small, the candidate grid is easy to audit, and the assignment rewards clear reasoning more than solver complexity.
 
-## 4. Objective
+## 5. Objective
 
 The scenario-level value is:
 
@@ -84,7 +100,7 @@ candidate value =
 
 Expected mFRR activation value is calculated from activation price, spot-price replacement cost, discharge efficiency, degradation cost, committed mFRR MW, and activation probability.
 
-## 5. Constraints
+## 6. Constraints
 
 The model maps the assignment constraints as follows:
 
@@ -110,7 +126,7 @@ max(charge_mw, discharge_mw)
 
 Residual peak exposure is reported separately. It is not hidden or treated as a zero target. The model enforces that ancillary-service commitments do not create additional peak exposure where the battery still has available discharge capacity. A 1 MW / 2 MWh battery may still be physically unable to eliminate all baseline peak exposure after SOC, reserve, and power constraints are respected.
 
-## 6. Local Dispatch
+## 7. Local Dispatch
 
 Local operation follows a savings-first hierarchy:
 
@@ -130,7 +146,7 @@ flowchart LR
 
 This creates the physical battery path. Market participation is then layered only on remaining feasible capacity.
 
-## 7. FCR-N and mFRR Allocation
+## 8. FCR-N and mFRR Allocation
 
 After local dispatch, available market capacity is calculated as:
 
@@ -157,7 +173,7 @@ flowchart TD
     I --> J[Select best feasible split]
 ```
 
-## 8. mFRR Activation Uncertainty
+## 9. mFRR Activation Uncertainty
 
 mFRR activation is represented through three scenarios:
 
@@ -176,7 +192,7 @@ That second effect is important. It allows mFRR to reduce later local savings if
 
 This is not a full physical replay of every activation event. It is a representative-day sensitivity that makes activation risk visible.
 
-## 9. Scenarios
+## 10. Scenarios
 
 The model compares six cases:
 
@@ -198,7 +214,7 @@ flowchart TD
 | Stacked base activation | Stacked case with representative activation exposure |
 | Stacked high activation | Stacked stress case |
 
-## 10. Results
+## 11. Results
 
 | Scenario | Total value EUR | Local savings EUR | Local savings % | Delta vs FCR-N only EUR | Minimum SOC MWh | Violations |
 |---|---:|---:|---:|---:|---:|---:|
@@ -217,7 +233,7 @@ xychart-beta
     bar [-512.46, -193.31, 0.00, 16.38, -29.16, -49.03]
 ```
 
-## 11. Interpretation
+## 12. Interpretation
 
 The local-only battery creates customer-side savings of 319.15 EUR, or 15.5% versus the no-battery baseline. This establishes that the battery has a real local value case before ancillary services are added.
 
@@ -227,39 +243,31 @@ The stacked low-activation case improves total value by 16.38 EUR versus FCR-N-o
 
 The base and high activation cases underperform FCR-N-only by 29.16 EUR and 49.03 EUR. In these cases, expected mFRR activation consumes SOC, reducing later local savings. The result is economically useful: mFRR participation should be conditional on activation exposure and opportunity cost, not simply enabled whenever prequalification exists.
 
-## 12. B3 Operational Break-Even Extension
+## 13. B3 Operational Break-Even Extension
 
 B3 extends Part A from "what happened on this representative day?" to:
 
-```text
-Under what activation and price assumptions would mFRR remain worthwhile?
-```
+> Under what activation and price assumptions would mFRR remain worthwhile?
 
 The B3 analysis uses an operational break-even rule, not full battery CAPEX payback:
 
-```text
-stacked_total_value_eur - fcr_only_total_value_eur > 0
-```
+> mFRR is worthwhile when the stacked FCR-N + mFRR case creates more total daily value than the FCR-N-only case.
 
-The B3 grid varies mFRR activation probability from 0% to 75%, mFRR capacity price from 0.50x to 2.00x, and aggregate battery count from one to three identical 1 MW / 2 MWh units. It writes:
-
-```text
-data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv
-```
+The B3 grid varies mFRR activation probability from 0% to 75%, mFRR capacity price from 0.50x to 2.00x, and aggregate battery count from one to three identical 1 MW / 2 MWh units. It writes `data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv`.
 
 The expanded grid has 336 cells. Twenty-two cells beat the same-size FCR-N-only benchmark. At the current 1.00x mFRR capacity price, only 0% activation is positive. At 5% activation, only the 1-battery case with a 2.00x capacity-price multiplier becomes positive. Above 5% activation, no tested cell beats FCR-N-only.
 
-| Battery count | Aggregate size | Positive cells | Best delta vs FCR-N-only |
-|---:|---:|---:|---:|
-| 1 | 1 MW / 2 MWh | 8 of 112 | +34.77 EUR/day |
-| 2 | 2 MW / 4 MWh | 7 of 112 | +5.91 EUR/day |
-| 3 | 3 MW / 6 MWh | 7 of 112 | +4.88 EUR/day |
+| Battery count | Aggregate size | Best delta vs FCR-N-only |
+|---:|---:|---:|
+| 1 | 1 MW / 2 MWh | +34.77 EUR/day |
+| 2 | 2 MW / 4 MWh | +5.91 EUR/day |
+| 3 | 3 MW / 6 MWh | +4.88 EUR/day |
 
 The battery-size sweep is useful because SOC headroom matters. It also shows that larger batteries do not automatically make mFRR more attractive: the FCR-N-only benchmark also improves as battery size increases.
 
-The full B3 note is in `docs/B3_BREAK_EVEN_ANALYSIS.md`. It also includes a small commercial overlay for incremental mFRR enablement cost, annual operating cost, and risk buffer. That overlay is intentionally separate from the core operational B3 result.
+The full B3 note is in `docs/B3_BREAK_EVEN_ANALYSIS.md`.
 
-## 13. Constraint Audit
+## 14. Constraint Audit
 
 All six scenarios have 24 feasible rows and zero reported violations.
 
@@ -267,7 +275,7 @@ The maximum total reserved or used capacity is 1.0 MW for active battery scenari
 
 Residual peak exposure remains in the results because the battery is capacity and energy constrained. This is expected and documented. The model's protection rule is that market commitments should not create extra peak exposure when battery discharge capacity remains available.
 
-## 14. Why Not a Full MILP
+## 15. Why Not a Full MILP
 
 A MILP would be a natural production extension. It would be especially useful for multi-day, 15-minute, multi-market optimization with terminal SOC constraints and forecast uncertainty.
 
@@ -279,7 +287,7 @@ For this assessment, the candidate scheduler is preferable because it is:
 - sufficient for the representative-day FCR-N versus mFRR comparison
 - explicit about assumptions and trade-offs
 
-## 15. What I Would Do With More Time: Production Modelling Roadmap
+## 16. What I Would Do With More Time: Production Modelling Roadmap
 
 The current model uses a transparent representative-day scheduler. That is appropriate for Part A, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
 
@@ -287,14 +295,7 @@ The production system should use at least two years of hourly or 15-minute site,
 
 The ML layer should not replace the optimizer. It should provide forecasts and scenario inputs into the constrained dispatch model.
 
-```text
-Historical data
-    -> data quality and anomaly checks
-    -> forecasting / ML models
-    -> load, PV, price, and activation scenarios
-    -> constrained battery optimizer
-    -> dispatch and bidding decision
-```
+> Historical data -> data quality and anomaly checks -> forecasting / ML models -> load, PV, price, and activation scenarios -> constrained battery optimizer -> dispatch and bidding decision
 
 ### Where ML would help
 
@@ -371,7 +372,7 @@ The forecasting layer should be evaluated through backtests that measure:
 
 The next modelling step is therefore a multi-day or multi-season backtest where forecasts feed the optimizer and the resulting dispatch is compared against FCR-N-only, local-only, and stacked strategies.
 
-## 16. Conclusion
+## 17. Conclusion
 
 The Part A result is not "mFRR always wins." The result is:
 

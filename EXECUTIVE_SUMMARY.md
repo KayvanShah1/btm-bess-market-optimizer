@@ -8,7 +8,7 @@ The first layer is local customer value: reducing grid import, shaving peaks, im
 
 The second layer is grid-service revenue. FCR-N is the stable benchmark service in this model. It uses available battery capacity for frequency containment revenue while still preserving the local savings case. mFRR is the new opportunity, but it is harder to schedule because activation is uncertain. If mFRR is activated, it can consume battery SOC that may be needed later for peak shaving or high-price discharge.
 
-The operating question is therefore not simply whether mFRR has revenue. The question is:
+The operating question is not whether mFRR can earn revenue. It is whether that revenue survives the SOC and local-value trade-off:
 
 > When should the battery use remaining flexibility for mFRR,
 > and when is FCR-N-only the safer and more valuable choice?
@@ -40,7 +40,9 @@ The representative day uses SE3 spot prices, FCR-N capacity prices, and SN3 mFRR
 
 ## Main Finding
 
-mFRR is conditionally attractive, not automatically attractive.
+mFRR is conditionally attractive, not a default add-on.
+
+> Use mFRR only when the battery has enough operational margin for activation risk; otherwise, FCR-N-only is the cleaner choice.
 
 | Scenario | Total value EUR | Local savings % | Delta vs FCR-N only EUR |
 |---|---:|---:|---:|
@@ -79,15 +81,11 @@ The result is selective rather than broad. Most attractive cases occur when acti
 | 2 | 2 MW / 4 MWh | +5.91 EUR/day |
 | 3 | 3 MW / 6 MWh | +4.88 EUR/day |
 
-Larger batteries do not automatically make mFRR more attractive because the FCR-N-only benchmark also improves with additional capacity.
+A larger battery does not by itself solve the mFRR case. It also strengthens the FCR-N-only benchmark, so mFRR still needs enough compensation to beat the next-best use of the same capacity.
 
 ## Commercial Interpretation
 
-The operating policy should not be:
-
-> Always stack mFRR when available.
-
-A better rule is:
+The operating policy should not be to stack whenever mFRR is available. Recommended operating rule:
 
 > Accept mFRR only when expected capacity and activation value clearly exceed the value of the local flexibility it consumes.
 

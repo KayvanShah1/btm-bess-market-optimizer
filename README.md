@@ -14,17 +14,38 @@
 
 Scenario-based optimizer for deciding how a 1 MW / 2 MWh behind-the-meter battery should allocate hourly capacity between local customer savings, FCR-N, and mFRR.
 
-The project is intentionally scoped as an explainable representative-day BESS scheduling model. It focuses on clear constraint handling and a dashboard that makes the trade-off between FCR-N-only operation and stacked FCR-N + mFRR participation reviewable.
+Built around an explainable representative-day schedule, the model keeps the dispatch logic visible: what is held back for the customer, what is available for reserve markets, and which constraints limit market participation.
+
+## Market Context
+
+Industrial sites with solar PV and batteries sit between site operations and ancillary-service markets. The same battery capacity cannot be used twice: energy reserved for market commitments may be unavailable for factory peaks, and mFRR activation can change the state-of-charge path for the rest of the day.
+
+Stacking has to be scheduled against site operations. Each hour balances load, PV generation, battery state of charge, grid prices, reserve prices, activation assumptions, and local operating constraints before capacity can be offered to any market use case.
+
+FCR-N is the reserve-market benchmark because it is capacity-led and comparatively predictable in this representative-day model. mFRR is treated as a conditional stacking opportunity because it can add capacity and activation upside while also changing the battery's later operating position.
+
+## System Setup
+
+The model represents one commercial and industrial site with:
+
+- A 1 MW / 2 MWh behind-the-meter battery
+- Co-located solar PV
+- Factory load
+- Grid import/export connection
+- FCR-N and mFRR market signals
+- Local peak-shaving and state-of-charge constraints
+
+The cover image summarizes this setup: PV and factory load are served locally first, the battery preserves headroom for customer value and reserve readiness, and only remaining feasible capacity is considered for FCR-N and mFRR.
 
 ## Main Finding
 
-The model does not assume that stacked market participation is always better.
+The main result is conditional: stacked FCR-N + mFRR is only better when mFRR compensation is strong enough to cover activation risk and the local flexibility it consumes.
 
 - FCR-N-only is the stable benchmark because it adds capacity revenue while preserving local dispatch.
 - Stacked FCR-N + mFRR outperforms FCR-N-only in the low-activation case.
 - In base and high mFRR activation cases, expected activation consumes SOC and can reduce later local savings, making stacked participation lower value than FCR-N-only.
 
-That is the central model conclusion: mFRR should be accepted only when its expected value compensates for the battery flexibility it consumes.
+> Use mFRR only when the battery has enough operational margin for activation risk; otherwise, FCR-N-only is the cleaner choice.
 
 A production version would add a forecasting layer trained on at least two years of site, market, weather, and activation data, but the constrained optimizer would still enforce SOC, local savings, reserve readiness, and shared-capacity limits.
 

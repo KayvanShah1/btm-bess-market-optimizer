@@ -7,7 +7,6 @@
 ![Plotly](https://img.shields.io/badge/Plotly-Charts-3F4F75?logo=plotly&logoColor=white)
 ![Rich](https://img.shields.io/badge/Rich-CLI%20Output-8A2BE2)
 ![Ruff](https://img.shields.io/badge/Ruff-Linting-D7FF64)
-![Pytest](https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white)
 ![uv](https://img.shields.io/badge/uv-Package%20Manager-6E56CF)
 ![License](https://img.shields.io/badge/License-BSD%203--Clause-blue)
 

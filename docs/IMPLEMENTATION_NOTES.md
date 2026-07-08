@@ -6,12 +6,12 @@ The root README intentionally avoids a full project layout. This document record
 
 ```mermaid
 flowchart TD
-    A[Raw and processed data] --> B[scripts/build_processed_dataset.py]
-    B --> C[data/processed]
-    C --> D[scripts/run_part_a_model.py]
-    D --> E[bess_optimizer model package]
-    E --> F[data/output]
-    F --> G[Streamlit dashboard]
+    A[Raw source inputs] --> B[Data preparation step]
+    B --> C[Processed model inputs]
+    C --> D[Scenario optimization step]
+    D --> E[Constraint and value calculations]
+    E --> F[Model outputs]
+    F --> G[Dashboard review]
 ```
 
 ## 2. Optimizer Package
@@ -35,22 +35,22 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant CLI as run_part_a_model.py
-    participant IO as model.io
-    participant Scenarios as model.scenarios
-    participant Baselines as model.baselines
-    participant Scheduler as model.scheduler
-    participant Metrics as model.metrics
+    participant Runner as Run command
+    participant Inputs as Input layer
+    participant Scenarios as Scenario layer
+    participant Baselines as Baseline schedules
+    participant Scheduler as Stacked scheduler
+    participant Metrics as Reporting layer
 
-    CLI->>IO: load_hourly_inputs(config)
-    IO-->>CLI: hourly dataframe
-    CLI->>Scenarios: run_part_a_scenarios(df, config)
-    Scenarios->>Baselines: run no-battery, local-only, FCR-N-only
-    Scenarios->>Scheduler: run stacked low/base/high activation
-    Scenarios->>Metrics: build summary and constraint audit
-    Metrics-->>Scenarios: summary and audit dataframes
-    Scenarios-->>CLI: dispatch, summary, audit
-    CLI->>IO: write_part_a_outputs(...)
+    Runner->>Inputs: Request representative-day inputs
+    Inputs-->>Runner: Return hourly model inputs
+    Runner->>Scenarios: Start Part A scenario run
+    Scenarios->>Baselines: Build no-battery, local-only, and FCR-N-only cases
+    Scenarios->>Scheduler: Build low, base, and high activation stacked cases
+    Scenarios->>Metrics: Summarize value and feasibility
+    Metrics-->>Scenarios: Return scenario reports
+    Scenarios-->>Runner: Return dispatch, summary, and audit views
+    Runner->>Inputs: Save model outputs
 ```
 
 ## 4. Candidate Scheduler

@@ -22,14 +22,13 @@ The hourly model is used for Part A because the assignment allows 24 hourly step
 
 ```mermaid
 flowchart TD
-    A[Raw source files] --> B[Parse timestamps and numeric columns]
+    A[Raw source inputs] --> B[Validate and standardize fields]
     B --> C[Build 15-minute time index]
     C --> D[Join load, PV, spot, FCR-N, and mFRR signals]
-    D --> E[Write Representative day 15 min aggregate to CSV]
-    E --> F[Aggregate to hourly means / flags]
-    F --> G[Write Representative day 1 hr aggregate to CSV]
-    G --> H[Part A optimizer]
-    H --> I[Dispatch, scenario summary, constraint audit]
+    D --> E[Create canonical representative-day dataset]
+    E --> F[Aggregate to hourly model inputs]
+    F --> G[Run Part A optimizer]
+    G --> H[Create dispatch, summary, and audit outputs]
 ```
 
 ## 4. Data Sourcing and Access

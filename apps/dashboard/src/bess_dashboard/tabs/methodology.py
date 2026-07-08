@@ -130,7 +130,13 @@ def render_methodology_tab() -> None:
         {"Area": "Resolution", "Assumption": "Hourly model for Part A; 15-minute data retained as canonical input."},
         {"Area": "PV", "Assumption": "PV is self-consumed by the factory first."},
         {"Area": "FCR-N", "Assumption": "Modelled as capacity revenue requiring SOC headroom."},
-        {"Area": "mFRR", "Assumption": "Modelled as up-capacity plus expected activation value."},
+        {
+            "Area": "mFRR",
+            "Assumption": (
+                "Modelled as up-capacity plus conservative expected activation value; "
+                "base/high activation scenarios also reduce SOC."
+            ),
+        },
         {
             "Area": "Excluded",
             "Assumption": "FCR-D, aFRR, PV export revenue, and machine scheduling are outside core Part A.",
@@ -144,11 +150,14 @@ def render_methodology_tab() -> None:
         st.markdown(
             """
             The stacked strategy is not assumed to always beat FCR-only. It performs better when mFRR
-            capacity revenue is attractive and activation exposure is low. Under base or high activation
-            assumptions, mFRR can reduce total value because expected activation uses battery energy and
-            leaves less flexibility for local site savings.
+            capacity revenue and expected activation value compensate for the battery flexibility consumed
+            by activation readiness and expected activation energy.
 
-            This is the intended Part A trade-off: the battery should not blindly chase ancillary-market
+            In the base and high activation scenarios, expected mFRR activation reduces SOC. This can lower
+            later local savings because less energy remains available for peak shaving or high-price discharge.
+            The result is the intended Part A trade-off: the battery should not blindly chase ancillary-market
             revenue if doing so weakens the customer-side value case.
+
+            This is a conservative modelling assumption rather than a perfect physical replay of mFRR dispatch.
             """
         )

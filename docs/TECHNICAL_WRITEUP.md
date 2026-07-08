@@ -241,13 +241,21 @@ The B3 analysis uses an operational break-even rule, not full battery CAPEX payb
 stacked_total_value_eur - fcr_only_total_value_eur > 0
 ```
 
-The first grid varies mFRR activation probability from 0% to 75% and mFRR capacity price from 0.50x to 2.00x. It writes:
+The B3 grid varies mFRR activation probability from 0% to 75%, mFRR capacity price from 0.50x to 2.00x, and aggregate battery count from one to three identical 1 MW / 2 MWh units. It writes:
 
 ```text
 data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv
 ```
 
-The initial grid has 112 cells. Eight cells beat FCR-N-only. At the current 1.00x mFRR capacity price, only the 0% activation case is positive. At 5% activation, the grid requires a 2.00x capacity-price multiplier to become positive. Above 5% activation, no tested cell beats FCR-N-only.
+The expanded grid has 336 cells. Twenty-two cells beat the same-size FCR-N-only benchmark. At the current 1.00x mFRR capacity price, only 0% activation is positive. At 5% activation, only the 1-battery case with a 2.00x capacity-price multiplier becomes positive. Above 5% activation, no tested cell beats FCR-N-only.
+
+| Battery count | Aggregate size | Positive cells | Best delta vs FCR-N-only |
+|---:|---:|---:|---:|
+| 1 | 1 MW / 2 MWh | 8 of 112 | +34.77 EUR/day |
+| 2 | 2 MW / 4 MWh | 7 of 112 | +5.91 EUR/day |
+| 3 | 3 MW / 6 MWh | 7 of 112 | +4.88 EUR/day |
+
+The battery-size sweep is useful because SOC headroom matters. It also shows that larger batteries do not automatically make mFRR more attractive: the FCR-N-only benchmark also improves as battery size increases.
 
 The full B3 note is in `docs/B3_BREAK_EVEN_ANALYSIS.md`. It also includes a small commercial overlay for incremental mFRR enablement cost, annual operating cost, and risk buffer. That overlay is intentionally separate from the core operational B3 result.
 

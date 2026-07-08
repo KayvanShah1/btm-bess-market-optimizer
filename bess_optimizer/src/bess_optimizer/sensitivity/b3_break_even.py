@@ -12,6 +12,7 @@ from bess_optimizer.model.scheduler import run_stacked_schedule
 
 DEFAULT_ACTIVATION_PROBABILITIES = tuple(round(value * 0.05, 2) for value in range(16))
 DEFAULT_MFRR_CAPACITY_PRICE_MULTIPLIERS = (0.50, 0.75, 1.00, 1.25, 1.50, 1.75, 2.00)
+DEFAULT_BATTERY_COUNTS = (1, 2, 3)
 
 
 def apply_mfrr_capacity_price_multiplier(df: pl.DataFrame, multiplier: float) -> pl.DataFrame:
@@ -61,43 +62,76 @@ def _coerce_float_grid(values: Iterable[float]) -> tuple[float, ...]:
     return tuple(float(value) for value in values)
 
 
+def _coerce_int_grid(values: Iterable[int]) -> tuple[int, ...]:
+    return tuple(int(value) for value in values)
+
+
+def scale_config_for_battery_count(config: PartAModelConfig, battery_count: int) -> PartAModelConfig:
+    if battery_count < 1:
+        raise ValueError("battery_count must be at least 1")
+
+    scaled_battery = config.battery.model_copy(
+        update={
+            "power_mw": config.battery.power_mw * battery_count,
+            "energy_mwh": config.battery.energy_mwh * battery_count,
+            "initial_soc_mwh": config.battery.initial_soc_mwh * battery_count,
+            "min_soc_mwh": config.battery.min_soc_mwh * battery_count,
+            "max_soc_mwh": config.battery.max_soc_mwh * battery_count,
+        }
+    )
+    return config.model_copy(update={"battery": scaled_battery})
+
+
 def run_b3_break_even_grid(
     df: pl.DataFrame,
     config: PartAModelConfig,
     *,
     activation_probabilities: Iterable[float] = DEFAULT_ACTIVATION_PROBABILITIES,
     mfrr_capacity_price_multipliers: Iterable[float] = DEFAULT_MFRR_CAPACITY_PRICE_MULTIPLIERS,
+    battery_counts: Iterable[int] = DEFAULT_BATTERY_COUNTS,
 ) -> pl.DataFrame:
     activation_grid = _coerce_float_grid(activation_probabilities)
     multiplier_grid = _coerce_float_grid(mfrr_capacity_price_multipliers)
-    no_battery_dispatch = run_no_battery_baseline(df, config)
-    fcr_only_dispatch = run_fcr_only_baseline(df, config)
+    battery_count_grid = _coerce_int_grid(battery_counts)
 
     rows = []
-    for activation_probability in activation_grid:
-        for multiplier in multiplier_grid:
-            scenario_name = "stacked_b3_break_even"
-            adjusted_df = apply_mfrr_capacity_price_multiplier(df, multiplier)
-            stacked_dispatch = run_stacked_schedule(
-                adjusted_df,
-                config,
-                activation_probability=activation_probability,
-                scenario_name=scenario_name,
-            )
-            summary_df = build_scenario_summary(
-                pl.concat([no_battery_dispatch, fcr_only_dispatch, stacked_dispatch], how="vertical"),
-                config,
-            )
-            comparison = compare_against_fcr_only(summary_df, scenario_name)
-            rows.append(
-                {
-                    "activation_probability": activation_probability,
-                    "mfrr_capacity_price_multiplier": multiplier,
-                    **comparison,
-                }
-            )
+    for battery_count in battery_count_grid:
+        scenario_config = scale_config_for_battery_count(config, battery_count)
+        no_battery_dispatch = run_no_battery_baseline(df, scenario_config)
+        fcr_only_dispatch = run_fcr_only_baseline(df, scenario_config)
 
-    return pl.DataFrame(rows).sort(["activation_probability", "mfrr_capacity_price_multiplier"])
+        for activation_probability in activation_grid:
+            for multiplier in multiplier_grid:
+                scenario_name = "stacked_b3_break_even"
+                adjusted_df = apply_mfrr_capacity_price_multiplier(df, multiplier)
+                stacked_dispatch = run_stacked_schedule(
+                    adjusted_df,
+                    scenario_config,
+                    activation_probability=activation_probability,
+                    scenario_name=scenario_name,
+                )
+                summary_df = build_scenario_summary(
+                    pl.concat([no_battery_dispatch, fcr_only_dispatch, stacked_dispatch], how="vertical"),
+                    scenario_config,
+                )
+                comparison = compare_against_fcr_only(summary_df, scenario_name)
+                rows.append(
+                    {
+                        "battery_count": battery_count,
+                        "battery_power_mw": scenario_config.battery.power_mw,
+                        "battery_energy_mwh": scenario_config.battery.energy_mwh,
+                        "usable_soc_headroom_mwh": (
+                            scenario_config.battery.max_soc_mwh - scenario_config.battery.min_soc_mwh
+                        ),
+                        "activation_probability": activation_probability,
+                        "mfrr_capacity_price_multiplier": multiplier,
+                        **comparison,
+                    }
+                )
+
+    return pl.DataFrame(rows).sort(
+        ["battery_count", "activation_probability", "mfrr_capacity_price_multiplier"]
+    )
 
 
 def summarize_break_even_result(break_even_df: pl.DataFrame) -> dict[str, float | int | None]:

@@ -12,19 +12,23 @@ It is not a full battery investment-payback model. The battery is assumed to alr
 
 ## Method
 
-The B3 script reuses the Part A dispatch engine and varies two assumptions:
+The B3 script reuses the Part A dispatch engine and varies three assumptions:
 
 | Variable | Grid |
 |---|---:|
 | mFRR activation probability | 0.00 to 0.75, in 0.05 steps |
 | mFRR capacity price multiplier | 0.50x to 2.00x |
+| Battery count | 1, 2, and 3 identical 1 MW / 2 MWh units |
+
+The battery-count sweep is an aggregate size test at the same site. It scales available battery MW, MWh, initial SOC, and SOC limits proportionally. It does not model separate meters, separate prequalification, or separate customer load profiles.
 
 For each grid cell, the model:
 
 1. Runs the FCR-N-only benchmark.
-2. Multiplies the mFRR capacity price by the selected multiplier.
-3. Runs the stacked FCR-N + mFRR scheduler with the selected activation probability.
-4. Calculates the daily value delta versus FCR-N-only.
+2. Scales the battery config for the selected battery count.
+3. Multiplies the mFRR capacity price by the selected multiplier.
+4. Runs the stacked FCR-N + mFRR scheduler with the selected activation probability.
+5. Calculates the daily value delta versus FCR-N-only for the same battery size.
 
 The operational decision rule is:
 
@@ -42,25 +46,35 @@ data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv
 
 ## Results
 
-The first B3 grid contains 112 cells. Eight cells are operationally positive versus the FCR-N-only benchmark.
+The expanded B3 grid contains 336 cells. Twenty-two cells are operationally positive versus the same-size FCR-N-only benchmark.
 
 | Result | Value |
 |---|---:|
-| FCR-N-only benchmark value | 512.46 EUR/day |
+| Grid cells | 336 |
+| Positive operational cells | 22 |
 | Best stacked delta | +34.77 EUR/day |
-| Worst stacked delta | -121.17 EUR/day |
-| Positive operational cells | 8 of 112 |
+| Worst stacked delta | -373.51 EUR/day |
 | Maximum activation probability that clears at 1.00x capacity price | 0% |
 
-Break-even thresholds in the first grid:
+Result by battery count:
 
-| mFRR activation probability | Minimum mFRR capacity price multiplier that beats FCR-N-only |
-|---:|---:|
-| 0% | 0.50x |
-| 5% | 2.00x |
-| 10% to 75% | No positive cell in this grid |
+| Battery count | Aggregate size | Positive cells | Best delta vs FCR-N-only | Best activation probability | Best capacity multiplier | Worst delta |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 1 MW / 2 MWh | 8 of 112 | +34.77 EUR/day | 0% | 2.00x | -121.17 EUR/day |
+| 2 | 2 MW / 4 MWh | 7 of 112 | +5.91 EUR/day | 0% | 2.00x | -233.92 EUR/day |
+| 3 | 3 MW / 6 MWh | 7 of 112 | +4.88 EUR/day | 0% | 2.00x | -373.51 EUR/day |
 
-The best case is zero activation with a 2.00x mFRR capacity price multiplier, giving a daily incremental value of 34.77 EUR. The only positive nonzero activation case is 5% activation at a 2.00x capacity price multiplier, giving 2.12 EUR/day.
+Break-even thresholds in the grid:
+
+| Battery count | mFRR activation probability | Minimum mFRR capacity price multiplier that beats FCR-N-only |
+|---:|---:|---:|
+| 1 | 0% | 0.50x |
+| 1 | 5% | 2.00x |
+| 2 | 0% | 0.50x |
+| 3 | 0% | 0.50x |
+| all tested sizes | 10% to 75% | No positive cell in this grid |
+
+The best case is one 1 MW / 2 MWh battery, zero activation, and a 2.00x mFRR capacity price multiplier, giving a daily incremental value of 34.77 EUR. The only positive nonzero activation case is the 1-battery case at 5% activation and a 2.00x capacity price multiplier, giving 2.12 EUR/day.
 
 ## Interpretation
 
@@ -72,6 +86,8 @@ or when capacity compensation is high enough to cover the flexibility it consume
 ```
 
 At higher activation probabilities, increasing the mFRR capacity price can still produce worse total value if the scheduler commits more mFRR capacity and expected activation drains SOC that would otherwise support local savings. That is why the surface is not perfectly monotonic.
+
+The battery-count sweep also shows that larger batteries do not automatically make mFRR more attractive. Larger aggregate battery capacity raises both the stacked case and the FCR-N-only benchmark. On this representative day, extra capacity improves the FCR-N-only alternative enough that the incremental mFRR delta is smaller for the 2- and 3-battery cases.
 
 ## Commercial Overlay
 
@@ -137,6 +153,7 @@ Optional cost assumptions can be changed from the CLI:
 
 ```powershell
 uv run --package bess-optimizer python scripts/run_b3_sensitivity.py `
+  --battery-counts 1,2,3 `
   --upfront-enable-cost-eur 25000 `
   --annual-operating-cost-eur 5000 `
   --risk-buffer-eur 2000 `

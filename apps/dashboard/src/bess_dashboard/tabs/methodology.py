@@ -113,6 +113,10 @@ def render_methodology_tab() -> None:
             "Meaning": "Tests whether higher or lower mFRR capacity prices compensate for flexibility consumed.",
         },
         {
+            "Input": "Battery count",
+            "Meaning": "Scales the Part A 1 MW / 2 MWh unit to 1, 2, or 3 identical aggregate batteries.",
+        },
+        {
             "Input": "FCR-N-only benchmark",
             "Meaning": "Keeps the same site and battery assumptions, with mFRR disabled.",
         },
@@ -213,6 +217,10 @@ def render_methodology_tab() -> None:
         {"Area": "Site", "Assumption": "Representative Swedish C&I light-factory load profile."},
         {"Area": "Zone", "Assumption": "SE3 / SN3 market alignment."},
         {"Area": "Resolution", "Assumption": "Hourly model for Part A; 15-minute data retained as canonical input."},
+        {
+            "Area": "B3 battery sweep",
+            "Assumption": "Battery count scales aggregate MW, MWh, initial SOC, and SOC limits at the same site.",
+        },
         {"Area": "PV", "Assumption": "PV is self-consumed by the factory first."},
         {"Area": "FCR-N", "Assumption": "Modelled as capacity revenue requiring SOC headroom."},
         {

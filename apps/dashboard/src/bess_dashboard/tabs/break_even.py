@@ -61,6 +61,27 @@ def render_kpi_cards(summary: dict[str, float | int | None]) -> None:
         )
 
 
+def battery_size_options(df: pl.DataFrame) -> list[dict[str, float | int | str]]:
+    if "battery_count" not in df.columns:
+        return []
+
+    return (
+        df.select(["battery_count", "battery_power_mw", "battery_energy_mwh", "usable_soc_headroom_mwh"])
+        .unique()
+        .sort("battery_count")
+        .to_dicts()
+    )
+
+
+def battery_size_label(row: dict[str, float | int | str]) -> str:
+    count = int(row["battery_count"])
+    label = "battery" if count == 1 else "batteries"
+    return (
+        f"{count} {label} "
+        f"({float(row['battery_power_mw']):.0f} MW / {float(row['battery_energy_mwh']):.0f} MWh)"
+    )
+
+
 def break_even_heatmap_figure(df: pl.DataFrame) -> go.Figure:
     activations = sorted(df["activation_probability"].unique().to_list())
     multipliers = sorted(df["mfrr_capacity_price_multiplier"].unique().to_list())
@@ -127,6 +148,9 @@ def threshold_table(df: pl.DataFrame) -> list[dict[str, str]]:
 
 def detail_rows(df: pl.DataFrame) -> list[dict[str, str]]:
     columns = [
+        "battery_count",
+        "battery_power_mw",
+        "battery_energy_mwh",
         "activation_probability",
         "mfrr_capacity_price_multiplier",
         "delta_vs_fcr_only_eur",
@@ -140,6 +164,9 @@ def detail_rows(df: pl.DataFrame) -> list[dict[str, str]]:
     rows = df.select(columns).sort(["activation_probability", "mfrr_capacity_price_multiplier"]).to_dicts()
     return [
         {
+            "Battery count": f"{int(row['battery_count'])}",
+            "Battery MW": f"{float(row['battery_power_mw']):.0f}",
+            "Battery MWh": f"{float(row['battery_energy_mwh']):.0f}",
             "Activation probability": f"{float(row['activation_probability']):.0%}",
             "Capacity multiplier": f"{float(row['mfrr_capacity_price_multiplier']):.2f}x",
             "Daily delta EUR": f"{float(row['delta_vs_fcr_only_eur']):,.2f}",
@@ -235,21 +262,35 @@ def render_payback_summary(break_even_df: pl.DataFrame) -> None:
 
 
 def render_break_even_tab(raw_break_even_df: pl.DataFrame) -> None:
-    summary = summarize_break_even_result(raw_break_even_df)
+    selected_df = raw_break_even_df
+    options = battery_size_options(raw_break_even_df)
+    if options:
+        selected_option = st.selectbox(
+            "Battery size",
+            options=options,
+            format_func=battery_size_label,
+        )
+        selected_df = raw_break_even_df.filter(pl.col("battery_count") == int(selected_option["battery_count"]))
+        st.caption(
+            "Battery-count sweep scales the Part A unit as identical aggregate batteries at the same site. "
+            "It changes available MW and SOC headroom, not customer load."
+        )
+
+    summary = summarize_break_even_result(selected_df)
 
     st.markdown('<div class="section-title">Operational break-even</div>', unsafe_allow_html=True)
     render_kpi_cards(summary)
 
-    st.plotly_chart(break_even_heatmap_figure(raw_break_even_df), width="stretch", config=CHART_CONFIG)
+    st.plotly_chart(break_even_heatmap_figure(selected_df), width="stretch", config=CHART_CONFIG)
     st.caption("Green cells mean stacked FCR-N + mFRR beats FCR-N-only. Red cells mean FCR-N-only is higher value.")
 
-    threshold_rows = threshold_table(raw_break_even_df)
+    threshold_rows = threshold_table(selected_df)
     if threshold_rows:
         st.markdown('<div class="section-title">Break-even threshold by activation rate</div>', unsafe_allow_html=True)
         st.dataframe(threshold_rows, hide_index=True, width="stretch")
 
     assumptions = render_financial_controls()
-    break_even_df = build_financial_overlay(raw_break_even_df, assumptions)
+    break_even_df = build_financial_overlay(selected_df, assumptions)
     render_payback_summary(break_even_df)
 
     with st.expander(f"Sensitivity grid rows ({break_even_df.height:,} rows)"):

@@ -1,8 +1,10 @@
 """Sensitivity-analysis helpers for the BESS optimizer."""
 
 from bess_optimizer.sensitivity.b3_break_even import (
+    DEFAULT_BATTERY_COUNTS,
     apply_mfrr_capacity_price_multiplier,
     run_b3_break_even_grid,
+    scale_config_for_battery_count,
     summarize_break_even_result,
 )
 from bess_optimizer.sensitivity.finance import (
@@ -18,6 +20,7 @@ from bess_optimizer.sensitivity.finance import (
 
 __all__ = [
     "FinancialOverlayAssumptions",
+    "DEFAULT_BATTERY_COUNTS",
     "annualize_daily_delta",
     "apply_mfrr_capacity_price_multiplier",
     "build_financial_overlay",
@@ -27,5 +30,6 @@ __all__ = [
     "calculate_payback_years",
     "calculate_required_daily_delta_for_payback",
     "run_b3_break_even_grid",
+    "scale_config_for_battery_count",
     "summarize_break_even_result",
 ]

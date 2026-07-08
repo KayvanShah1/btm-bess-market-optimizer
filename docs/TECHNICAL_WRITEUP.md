@@ -247,7 +247,7 @@ For this assessment, the candidate scheduler is preferable because it is:
 - sufficient for the representative-day FCR-N versus mFRR comparison
 - explicit about assumptions and trade-offs
 
-## 14. Future Production Modelling Roadmap
+## 14. What I Would Do With More Time: Production Modelling Roadmap
 
 The current model uses a transparent representative-day scheduler. That is appropriate for Part A, but a production version should add a forecasting layer and backtest the optimizer over a much longer history.
 
@@ -342,6 +342,7 @@ The next modelling step is therefore a multi-day or multi-season backtest where 
 ## 15. Conclusion
 
 The Part A result is not "mFRR always wins." The result is:
+
 - FCR-N-only is a stable benchmark.
 - mFRR helps when activation exposure is low or well compensated.
 - mFRR hurts when activation consumes SOC needed for local customer value.

@@ -1,4 +1,12 @@
 # Executive Summary
+![Domain](https://img.shields.io/badge/Domain-BESS%20Optimization-0B7285)
+![Asset](https://img.shields.io/badge/Asset-Behind--the--Meter%201MW%20%2F%202MWh-2F9E44)
+![Strategy](https://img.shields.io/badge/Strategy-Local--First%20Dispatch-2B8A3E)
+![Markets](https://img.shields.io/badge/Markets-FCR--N%20%2B%20mFRR-364FC7)
+![Model](https://img.shields.io/badge/Model-Scenario%20Scheduler-5F3DC4)
+![Sensitivity](https://img.shields.io/badge/Sensitivity-Activation%20%2B%20Price%20Sweep-E67700)
+![Break-even](https://img.shields.io/badge/Break--even-Operational%20Screen-C92A2A)
+![Dashboard](https://img.shields.io/badge/Dashboard-Commercial%20Review%20Surface-0C8599)
 
 ## Market Context
 

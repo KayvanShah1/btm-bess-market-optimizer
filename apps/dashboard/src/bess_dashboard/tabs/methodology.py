@@ -87,6 +87,91 @@ def render_methodology_tab() -> None:
     ]
     st.dataframe(scenario_rows, hide_index=True, width="stretch")
 
+    st.markdown('<div class="section-title">B3 break-even method</div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(
+            """
+            B3 asks when stacked FCR-N + mFRR is better than FCR-N-only. This is handled as an
+            operational break-even grid, not as a full battery investment model.
+
+            ```
+            mFRR is operationally worthwhile when:
+
+            stacked_total_value_eur - fcr_only_total_value_eur > 0
+            ```
+            """
+        )
+
+    break_even_rows = [
+        {
+            "Input": "mFRR activation probability",
+            "Meaning": "Tests activation exposure from 0% to 75%.",
+        },
+        {
+            "Input": "mFRR capacity price multiplier",
+            "Meaning": "Tests whether higher or lower mFRR capacity prices compensate for flexibility consumed.",
+        },
+        {
+            "Input": "FCR-N-only benchmark",
+            "Meaning": "Keeps the same site and battery assumptions, with mFRR disabled.",
+        },
+        {
+            "Input": "Daily delta",
+            "Meaning": "stacked_total_value_eur minus fcr_only_total_value_eur.",
+        },
+    ]
+    st.dataframe(break_even_rows, hide_index=True, width="stretch")
+
+    st.markdown('<div class="section-title">Commercial payback overlay</div>', unsafe_allow_html=True)
+
+    with st.container(border=True):
+        st.markdown(
+            """
+            Payback is a secondary overlay on top of the operational result. It estimates how long
+            incremental mFRR value would take to recover enablement and operating costs.
+
+            ```
+            effective_operating_days =
+                operating_days * confidence_factor
+
+            annualized_delta_eur =
+                daily_delta_vs_fcr_only_eur * effective_operating_days
+
+            annual_net_incremental_value_eur =
+                annualized_delta_eur
+              - annual_operating_cost_eur
+              - risk_buffer_eur
+
+            payback_years =
+                upfront_enablement_cost_eur
+                /
+                annual_net_incremental_value_eur
+            ```
+
+            If annual net incremental value is zero or negative, payback is shown as not available.
+            """
+        )
+
+    payback_rows = [
+        {
+            "Diagnostic": "Fixed cost burden per day",
+            "Formula": "(annual operating cost + risk buffer) / effective operating days",
+        },
+        {
+            "Diagnostic": "Required daily delta for target payback",
+            "Formula": (
+                "(upfront cost / target payback years + annual operating cost + risk buffer) "
+                "/ effective operating days"
+            ),
+        },
+        {
+            "Diagnostic": "Gap to target",
+            "Formula": "daily delta vs FCR-only - required daily delta for target payback",
+        },
+    ]
+    st.dataframe(payback_rows, hide_index=True, width="stretch")
+
     st.markdown('<div class="section-title">Constraint logic</div>', unsafe_allow_html=True)
 
     constraint_rows = [
@@ -139,7 +224,7 @@ def render_methodology_tab() -> None:
         },
         {
             "Area": "Excluded",
-            "Assumption": "FCR-D, aFRR, PV export revenue, and machine scheduling are outside core Part A.",
+            "Assumption": "FCR-D, aFRR, full battery CAPEX, debt financing, NPV, and IRR are outside scope.",
         },
     ]
     st.dataframe(assumption_rows, hide_index=True, width="stretch")

@@ -70,7 +70,7 @@ def render_context(summary: dict[str, float | int | str], resolution: str) -> No
                 st.write(value)
 
 
-def render_data_tab(df: pl.DataFrame, *, resolution: str, show_detail: bool) -> None:
+def render_data_tab(df: pl.DataFrame, *, resolution: str) -> None:
     summary = summarize_data_tab(df)
     render_section_header(
         "Operating snapshot",
@@ -96,8 +96,7 @@ def render_data_tab(df: pl.DataFrame, *, resolution: str, show_detail: bool) -> 
         st.markdown('<div class="section-title">mFRR activation</div>', unsafe_allow_html=True)
         st.plotly_chart(activation_figure(df), width="stretch", config=CHART_CONFIG)
 
-    if show_detail:
-        st.markdown('<div class="section-title">Detail rows</div>', unsafe_allow_html=True)
+    with st.expander(f"Detail rows ({df.height:,})"):
         st.dataframe(
             df.select([col for col in DETAIL_COLUMNS if col in df.columns]).to_dicts(),
             hide_index=True,

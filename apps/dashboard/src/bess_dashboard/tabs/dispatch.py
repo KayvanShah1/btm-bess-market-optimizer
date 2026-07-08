@@ -182,18 +182,18 @@ def render_dispatch_tab(dispatch_df: pl.DataFrame, summary_df: pl.DataFrame, aud
     st.markdown('<div class="section-title">Value components</div>', unsafe_allow_html=True)
     st.plotly_chart(value_component_figure(summary_row), width="stretch", config=CHART_CONFIG)
 
-    st.markdown('<div class="section-title">Dispatch detail</div>', unsafe_allow_html=True)
     detail_df = scenario_df.with_columns(
         pl.col("service_selected").replace_strict(SERVICE_LABELS, default=pl.col("service_selected")).alias("service")
     )
-    st.dataframe(
-        detail_df.select([column for column in DETAIL_COLUMNS if column in detail_df.columns]).to_dicts(),
-        hide_index=True,
-        width="stretch",
-    )
+    with st.expander(f"Dispatch detail ({detail_df.height:,} rows)"):
+        st.dataframe(
+            detail_df.select([column for column in DETAIL_COLUMNS if column in detail_df.columns]).to_dicts(),
+            hide_index=True,
+            width="stretch",
+        )
 
-    st.markdown('<div class="section-title">Constraint audit</div>', unsafe_allow_html=True)
     display_audit_df = audit_df.with_columns(
         pl.col("scenario").replace_strict(SCENARIO_LABELS, default=pl.col("scenario")).alias("scenario")
     )
-    st.dataframe(display_audit_df.to_dicts(), hide_index=True, width="stretch")
+    with st.expander(f"Constraint audit ({display_audit_df.height:,} rows)"):
+        st.dataframe(display_audit_df.to_dicts(), hide_index=True, width="stretch")

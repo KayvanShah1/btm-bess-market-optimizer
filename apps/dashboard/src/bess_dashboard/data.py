@@ -17,6 +17,7 @@ MODEL_OUTPUT_FILES = {
     "dispatch": "part_a_dispatch_hourly_se3_20260624.csv",
     "summary": "part_a_scenario_summary_se3_20260624.csv",
     "audit": "part_a_constraint_audit_se3_20260624.csv",
+    "break_even": "b3_mfrr_break_even_sensitivity_se3_20260624.csv",
 }
 
 
@@ -72,5 +73,14 @@ def load_constraint_audit() -> pl.DataFrame:
     path = settings.output_dir / MODEL_OUTPUT_FILES["audit"]
     if not path.exists():
         raise FileNotFoundError(f"Part A constraint audit not found: {path}")
+
+    return pl.read_csv(path)
+
+
+@st.cache_data(show_spinner=False)
+def load_break_even_output() -> pl.DataFrame:
+    path = settings.output_dir / MODEL_OUTPUT_FILES["break_even"]
+    if not path.exists():
+        raise FileNotFoundError(f"B3 break-even output not found: {path}")
 
     return pl.read_csv(path)

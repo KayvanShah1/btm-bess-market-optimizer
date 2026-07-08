@@ -4,11 +4,13 @@ import streamlit as st
 
 from bess_dashboard.data import (
     filter_hour_range,
+    load_break_even_output,
     load_constraint_audit,
     load_dispatch_output,
     load_processed_dataset,
     load_scenario_summary,
 )
+from bess_dashboard.tabs.break_even import render_break_even_tab
 from bess_dashboard.tabs.data import render_data_tab
 from bess_dashboard.tabs.dispatch import render_dispatch_tab
 from bess_dashboard.tabs.methodology import render_methodology_tab
@@ -125,7 +127,7 @@ def main() -> None:
 
     active_view = st.segmented_control(
         "View",
-        options=["Data", "Dispatch", "Methodology"],
+        options=["Data", "Dispatch", "Break-even", "Methodology"],
         default="Data",
         key="active_dashboard_view",
     )
@@ -142,11 +144,10 @@ def main() -> None:
             max_value=23,
             value=(0, 23),
         )
-        show_detail = st.sidebar.checkbox("Detail table", value=True)
 
         grain = "hourly" if resolution == "Hourly" else "15min"
         df = filter_hour_range(load_processed_dataset(grain), hour_range)
-        render_data_tab(df, resolution=resolution, show_detail=show_detail)
+        render_data_tab(df, resolution=resolution)
 
     if active_view == "Dispatch":
         try:
@@ -155,6 +156,12 @@ def main() -> None:
                 load_scenario_summary(),
                 load_constraint_audit(),
             )
+        except FileNotFoundError as exc:
+            st.warning(str(exc))
+
+    if active_view == "Break-even":
+        try:
+            render_break_even_tab(load_break_even_output())
         except FileNotFoundError as exc:
             st.warning(str(exc))
 

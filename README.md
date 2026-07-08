@@ -91,7 +91,7 @@ I used OpenAI ChatGPT and Codex as support tools during this project. They were 
 | Debugging and review | ChatGPT and Codex were used to review whether the model outputs were sensible, identify confusing behaviour in the scenario results, and refine the treatment of FCR-N and mFRR trade-offs. |
 | Documentation | ChatGPT was used to help draft and organize the README and documentation sections covering methodology, assumptions, scenario interpretation, limitations, and future extensions. |
 
-All modelling assumptions, scenario choices, code changes, result interpretation, and final project materials were reviewed, edited, and accepted by me before publication.
+All modelling assumptions, scenario choices, code changes, result interpretation, and final project materials were reviewed, edited, and accepted by me.
 
 No proprietary customer or company data was provided to AI tools. The project uses public, synthetic, or representative data only.
 

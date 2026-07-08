@@ -2,11 +2,11 @@
 
 ## Market Context
 
-Battery assets create value in 2 layers.
+Battery assets create value in two layers.
 
-The 1st layer is local customer value: reducing grid import, shaving peaks, improving PV self-consumption, and lowering the customer's power bill. This is the value stream that protects the customer relationship, so it must come first.
+The first layer is local customer value: reducing grid import, shaving peaks, improving PV self-consumption, and lowering the customer's power bill. This is the value stream that protects the customer relationship, so it must come first.
 
-The 2nd layer is grid-service revenue. FCR-N is the stable benchmark service in this model. It uses available battery capacity for frequency containment revenue while still preserving the local savings case. mFRR is the new opportunity, but it is harder to schedule because activation is uncertain. If mFRR is activated, it can consume battery SOC that may be needed later for peak shaving or high-price discharge.
+The second layer is grid-service revenue. FCR-N is the stable benchmark service in this model. It uses available battery capacity for frequency containment revenue while still preserving the local savings case. mFRR is the new opportunity, but it is harder to schedule because activation is uncertain. If mFRR is activated, it can consume battery SOC that may be needed later for peak shaving or high-price discharge.
 
 The operating question is therefore not simply whether mFRR has revenue. The question is:
 

@@ -1,5 +1,16 @@
 # Behind-the-Meter BESS Market Optimizer
 
+![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white)
+![Polars](https://img.shields.io/badge/Polars-DataFrames-CD792C)
+![Pydantic](https://img.shields.io/badge/Pydantic-Validation-E92063?logo=pydantic&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit&logoColor=white)
+![Plotly](https://img.shields.io/badge/Plotly-Charts-3F4F75?logo=plotly&logoColor=white)
+![Rich](https://img.shields.io/badge/Rich-CLI%20Output-8A2BE2)
+![Ruff](https://img.shields.io/badge/Ruff-Linting-D7FF64)
+![Pytest](https://img.shields.io/badge/Pytest-Testing-0A9EDC?logo=pytest&logoColor=white)
+![uv](https://img.shields.io/badge/uv-Package%20Manager-6E56CF)
+![License](https://img.shields.io/badge/License-BSD%203--Clause-blue)
+
 Scenario-based optimizer for deciding how a 1 MW / 2 MWh behind-the-meter battery should allocate hourly capacity between local customer savings, FCR-N, and mFRR.
 
 The project is intentionally scoped to Part A of the Truxel take-home assignment. It focuses on an explainable representative-day model, clear constraint handling, and a dashboard that makes the trade-off between FCR-N-only operation and stacked FCR-N + mFRR participation reviewable.
@@ -82,3 +93,16 @@ I used OpenAI ChatGPT and Codex as support tools during this assignment. They we
 All modelling assumptions, scenario choices, code changes, result interpretation, and final submission materials were reviewed, edited, and accepted by me before submission.
 
 No proprietary Truxel data was provided to AI tools. The assignment uses public, synthetic, or representative data only.
+
+## Disclaimer
+
+This project is a technical implementation for a representative-day behind-the-meter BESS optimization assignment. It is not intended for production battery dispatch, live market bidding, customer billing, or settlement as-is.
+
+A production deployment would require additional engineering and operational controls, including validated customer meter data, real tariff and contract modelling, TSO product-rule validation, bid acceptance and settlement handling, battery warranty and degradation constraints, cyber-security review, secrets management, monitoring, audit logging, human override workflows, and compliance validation.
+
+> [!CAUTION]
+> Do not use this project to control live battery assets, submit real market bids, or make customer billing decisions without independent validation and production controls.
+
+## License
+
+This project is licensed under the BSD 3-Clause License. See [LICENSE](LICENSE) for details.

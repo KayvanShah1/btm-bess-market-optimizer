@@ -1,0 +1,28 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: btm-bess-market-optimizer:local
+    container_name: btm-bess-market-optimizer
+    environment:
+      BESS_PROJECT_ROOT: /app
+      PORT: "10000"
+    ports:
+      - "8501:10000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:10000/_stcore/health',
+          timeout=4)",
+        ]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped

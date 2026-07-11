@@ -4,12 +4,9 @@ services:
       runtime: image
       plan: free
       region: singapore
-      autoDeploy: true
-      dockerfilePath: ./Dockerfile
-      dockerContext: .
       image:
           url: ghcr.io/kayvanshah1/btm-bess-market-optimizer:latest
-      healthCheckPath: /
+      healthCheckPath: /_stcore/health
       envVars:
           - key: BESS_PROJECT_ROOT
             value: /app

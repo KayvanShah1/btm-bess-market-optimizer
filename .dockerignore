@@ -31,6 +31,3 @@ Thumbs.db
 Dockerfile*
 docker-compose*.yml
 compose*.yml
-
-*.md
-docs/

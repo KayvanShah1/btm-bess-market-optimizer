@@ -60,4 +60,4 @@ HEALTHCHECK \
     --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:' + __import__('os').environ.get('PORT', '10000') + '/_stcore/health', timeout=4)"
 
-CMD ["sh", "-c", "exec streamlit run apps/dashboard/src/bess_dashboard/app.py --server.address=0.0.0.0 --server.port=${PORT:-10000} --server.headless=true --browser.gatherUsageStats=false"]
+CMD ["sh", "-c", "python -m bess_dashboard.seo && exec streamlit run apps/dashboard/src/bess_dashboard/app.py --server.address=0.0.0.0 --server.port=${PORT:-10000} --server.headless=true --browser.gatherUsageStats=false"]

@@ -10,6 +10,7 @@ from bess_dashboard.data import (
     load_processed_dataset,
     load_scenario_summary,
 )
+from bess_dashboard.seo import SEO_DESCRIPTION, SEO_PAGE_TITLE
 from bess_dashboard.tabs.break_even import render_break_even_tab
 from bess_dashboard.tabs.data import render_data_tab
 from bess_dashboard.tabs.dispatch import render_dispatch_tab
@@ -111,7 +112,7 @@ def apply_theme() -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="BESS Market Optimizer",
+        page_title=SEO_PAGE_TITLE,
         page_icon=":material/battery_charging_full:",
         layout="wide",
     )
@@ -121,7 +122,7 @@ def main() -> None:
     st.markdown('<div class="dashboard-eyebrow">Behind-the-meter</div>', unsafe_allow_html=True)
     st.title("BESS Market Optimizer")
     st.markdown(
-        '<div class="dashboard-subtitle">Representative SE3 data view for load, PV, FCR-N, and mFRR signals.</div>',
+        f'<div class="dashboard-subtitle">{SEO_DESCRIPTION}</div>',
         unsafe_allow_html=True,
     )
 

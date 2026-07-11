@@ -15,3 +15,5 @@ services:
             value: /app
           - key: PORT
             value: "10000"
+          - key: BESS_DASHBOARD_PUBLIC_URL
+            value: https://btm-bess-market-optimizer.onrender.com

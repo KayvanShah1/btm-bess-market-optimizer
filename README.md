@@ -51,7 +51,20 @@ A production version would add a forecasting layer trained on at least two years
 
 ## Setup
 
-From the repository root:
+### Quick start with the GHCR image
+
+With Docker installed, start the dashboard directly from the published image:
+
+```powershell
+docker run --rm -p 8501:10000 ghcr.io/kayvanshah1/btm-bess-market-optimizer:latest
+```
+
+Open [http://localhost:8501](http://localhost:8501). Docker pulls the image
+automatically if it is not already available locally.
+
+### Run from source
+
+From the repository root, install the workspace dependencies:
 
 ```powershell
 uv sync --all-packages

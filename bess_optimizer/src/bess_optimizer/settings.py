@@ -65,7 +65,6 @@ class Settings(BaseProjectSettings):
     data_dir: Path = project_root / "data"
     raw_data_dir: Path = data_dir / "raw"
     processed_data_dir: Path = data_dir / "processed"
-    final_data_dir: Path = data_dir / "final"
     output_dir: Path = data_dir / "output"
 
     def model_post_init(self, __context):
@@ -74,7 +73,6 @@ class Settings(BaseProjectSettings):
             self.data_dir,
             self.raw_data_dir,
             self.processed_data_dir,
-            self.final_data_dir,
             self.output_dir,
         ]:
             directory.mkdir(parents=True, exist_ok=True)

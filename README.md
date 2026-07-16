@@ -51,19 +51,6 @@ A production version would add a forecasting layer trained on at least two years
 
 ## Setup
 
-### Quick start with the GHCR image
-
-With Docker installed, start the dashboard directly from the published image:
-
-```powershell
-docker run --rm -p 8501:10000 ghcr.io/kayvanshah1/btm-bess-market-optimizer:latest
-```
-
-Open [http://localhost:8501](http://localhost:8501). Docker pulls the image
-automatically if it is not already available locally.
-
-### Run from source
-
 From the repository root, install the workspace dependencies:
 
 ```powershell
@@ -72,25 +59,40 @@ uv sync --all-packages
 
 ## Running the pipeline
 
-Rebuild the processed representative-day dataset:
+Rebuild all data and model outputs with the single pipeline runner:
 
 ```powershell
-uv run --package bess-optimizer python scripts/build_processed_dataset.py
+uv run --package bess-optimizer bess-run-pipeline
+```
+
+The runner executes the following stages in order and stops immediately if a
+stage fails:
+
+1. Rebuild the processed representative-day dataset.
+2. Run the Part A core model.
+3. Run the B3 break-even sensitivity.
+
+To run an individual stage instead, use the corresponding command below.
+
+Build the processed representative-day dataset:
+
+```powershell
+uv run --package bess-optimizer bess-build-data
 ```
 
 Run the core model:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_part_a_model.py
+uv run --package bess-optimizer bess-run-model
 ```
 
 Run the B3 break-even sensitivity:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_b3_sensitivity.py
+uv run --package bess-optimizer bess-run-sensitivity
 ```
 
-Run the Streamlit dashboard:
+Then start the Streamlit dashboard:
 
 ```powershell
 uv run --package bess-dashboard bess-dashboard
@@ -102,6 +104,17 @@ The model writes:
 - `data/output/part_a_scenario_summary_se3_20260624.csv`
 - `data/output/part_a_constraint_audit_se3_20260624.csv`
 - `data/output/b3_mfrr_break_even_sensitivity_se3_20260624.csv`
+
+## Fastest way to view the dashboard
+
+The published GHCR image starts the dashboard with the committed data and model
+outputs. It does **not** rebuild the pipeline.
+
+```powershell
+docker run --rm -p 8501:10000 ghcr.io/kayvanshah1/btm-bess-market-optimizer:latest
+```
+
+Open [http://localhost:8501](http://localhost:8501).
 
 ## Project Documents
 

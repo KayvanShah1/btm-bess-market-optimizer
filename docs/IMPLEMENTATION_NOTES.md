@@ -113,13 +113,13 @@ uv sync --all-packages
 Rebuild processed data:
 
 ```powershell
-uv run --package bess-optimizer python scripts/build_processed_dataset.py
+uv run --package bess-optimizer bess-build-data
 ```
 
 Run the model:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_part_a_model.py
+uv run --package bess-optimizer bess-run-model
 ```
 
 Run tests:

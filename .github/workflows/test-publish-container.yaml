@@ -42,6 +42,9 @@ jobs:
             - name: Run lint
               run: uv run ruff check .
 
+            - name: Run tests
+              run: uv run pytest
+
     docker-build-publish:
         name: Build and publish GHCR image
         runs-on: ubuntu-latest

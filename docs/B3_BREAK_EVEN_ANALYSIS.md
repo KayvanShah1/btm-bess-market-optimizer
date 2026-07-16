@@ -88,12 +88,12 @@ A production investment case would require multi-season annual value estimates, 
 From the repository root:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_b3_sensitivity.py
+uv run --package bess-optimizer bess-run-sensitivity
 ```
 
 Optional battery-count assumptions can be changed from the CLI:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_b3_sensitivity.py `
+uv run --package bess-optimizer bess-run-sensitivity `
   --battery-counts 1,2,3
 ```

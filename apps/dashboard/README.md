@@ -19,9 +19,7 @@ Rebuild them from the repository root before reviewing if model logic or raw
 inputs change:
 
 ```powershell
-uv run --package bess-optimizer python scripts/build_processed_dataset.py
-uv run --package bess-optimizer python scripts/run_part_a_model.py
-uv run --package bess-optimizer python scripts/run_b3_sensitivity.py
+uv run --package bess-optimizer bess-run-pipeline
 ```
 
 The dashboard is a review surface for the core model and the B3 break-even

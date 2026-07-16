@@ -129,7 +129,7 @@ The data build writes:
 Rebuild with:
 
 ```powershell
-uv run --package bess-optimizer python scripts/build_processed_dataset.py
+uv run --package bess-optimizer bess-build-data
 ```
 
 ## 10. Model Outputs

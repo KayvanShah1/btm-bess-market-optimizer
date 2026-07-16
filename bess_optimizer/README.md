@@ -8,12 +8,23 @@ Install all workspace packages from the repository root:
 uv sync --all-packages
 ```
 
-Run the model:
+Run the complete data and modelling pipeline:
 
 ```powershell
-uv run --package bess-optimizer python scripts/run_part_a_model.py
+uv run --package bess-optimizer bess-run-pipeline
 ```
 
-The package contains the local dispatch logic, FCR-N baseline, stacked FCR-N/mFRR scheduler, scenario metrics, and constraint audit used by the dashboard and submission write-up.
+Individual package commands are also available:
+
+```powershell
+uv run --package bess-optimizer bess-build-data
+uv run --package bess-optimizer bess-run-model
+uv run --package bess-optimizer bess-run-sensitivity
+```
+
+The package contains processed-data loading and transformation, the local
+dispatch logic, FCR-N baseline, stacked FCR-N/mFRR scheduler, scenario metrics,
+constraint audit, B3 sensitivity, and application workflows used by the
+dashboard and submission write-up.
 
 For the full modelling explanation, see `../docs/TECHNICAL_WRITEUP.md`.

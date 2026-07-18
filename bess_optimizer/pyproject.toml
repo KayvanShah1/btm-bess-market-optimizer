@@ -9,7 +9,14 @@ dependencies = [
     "polars>=1.42.1",
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
+    "rich>=14.2.0",
 ]
+
+[project.scripts]
+bess-build-data = "bess_optimizer.cli:build_data"
+bess-run-model = "bess_optimizer.cli:run_model"
+bess-run-sensitivity = "bess_optimizer.cli:run_sensitivity"
+bess-run-pipeline = "bess_optimizer.cli:run_full_pipeline"
 
 [build-system]
 requires = ["hatchling"]

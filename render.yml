@@ -1,0 +1,16 @@
+services:
+    - type: web
+      name: btm-bess-market-optimizer
+      runtime: image
+      plan: free
+      region: singapore
+      image:
+          url: ghcr.io/kayvanshah1/btm-bess-market-optimizer:latest
+      healthCheckPath: /_stcore/health
+      envVars:
+          - key: BESS_PROJECT_ROOT
+            value: /app
+          - key: PORT
+            value: "10000"
+          - key: BESS_DASHBOARD_PUBLIC_URL
+            value: https://btm-bess-market-optimizer.onrender.com

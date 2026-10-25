@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -10,6 +10,8 @@ from scripts.esett_open_data import (
     ROUTES,
     backfill,
     check_day,
+    check_window,
+    quarter_windows,
     fetch_day,
     local_day_window,
     mba_options,
@@ -86,26 +88,104 @@ def test_utc_parsing_and_coverage_partial():
     assert audit["missing_quarter_hours"] == 95
 
 
-def test_resumable_source_json(tmp_path: Path):
-    session = FakeSession([{"timestampUTC": "2026-06-23T22:00:00Z", "mba": "X", "solar": 3}])
-    result = backfill(["production"], {"production": ["X"]},
-                      date(2026, 6, 24), date(2026, 6, 25),
-                      root=tmp_path, session=session, pause_seconds=0)
+def complete_quarter_rows(start: date, end: date, mba: str = "X"):
+    utc_start, _ = local_day_window(start)
+    utc_end, _ = local_day_window(end)
+    count = int((utc_end - utc_start).total_seconds() // 900)
+    return [
+        {"timestampUTC": (utc_start + timedelta(minutes=15 * n)).isoformat(), "mba": mba, "solar": 3}
+        for n in range(count)
+    ]
+
+
+def test_calendar_quarters_are_full_and_four_per_year():
+    quarters = list(quarter_windows(date(2024, 1, 1), date(2026, 1, 1)))
+    assert len(quarters) == 8
+    assert quarters[0] == (date(2024, 1, 1), date(2024, 4, 1))
+    assert quarters[-1] == (date(2025, 10, 1), date(2026, 1, 1))
+    with pytest.raises(ValueError, match="quarter boundary"):
+        list(quarter_windows(date(2026, 6, 24), date(2026, 7, 1)))
+
+
+def test_quarter_request_all_mbas_once_and_one_partition(tmp_path: Path):
+    first, last = date(2026, 4, 1), date(2026, 7, 1)
+    rows = complete_quarter_rows(first, last, "X") + complete_quarter_rows(first, last, "Y")
+    session = FakeSession(rows)
+    result = backfill(
+        ["production"], {"production": ["EIC_X", "EIC_Y"]}, first, last,
+        root=tmp_path, session=session, pause_seconds=0,
+    )
     assert result[0]["status"] == "downloaded"
-    assert Path(result[0]["path"]).exists()
-    assert backfill(["production"], {"production": ["X"]},
-                    date(2026, 6, 24), date(2026, 6, 25),
-                    root=tmp_path, session=session, pause_seconds=0)[0]["status"] == "cached"
+    assert result[0]["complete_time_axis"] is True
+    assert len(session.calls) == 1
+    url, params, _ = session.calls[0]
+    assert url.endswith("/EXP16/Volumes")
+    assert params == [
+        ("start", "2026-03-31T22:00:00.000Z"),
+        ("end", "2026-06-30T22:00:00.000Z"),
+        ("mba", "EIC_X"), ("mba", "EIC_Y"),
+    ]
+    paths = list((tmp_path / "production").glob("*.json"))
+    assert len(paths) == 1
+    assert paths[0].name == "2026-Q2.json"
+    assert backfill(
+        ["production"], {"production": ["EIC_X", "EIC_Y"]}, first, last,
+        root=tmp_path, session=session, pause_seconds=0,
+    )[0]["status"] == "cached"
     assert len(session.calls) == 1
 
 
-def test_no_empty_success_fake_coverage(tmp_path: Path):
+def test_missing_quarter_is_not_marked_complete_or_cached(tmp_path: Path):
+    session = FakeSession([
+        {"timestampUTC": "2026-03-31T22:00:00Z", "mba": "X", "solar": 3}
+    ])
+    first, last = date(2026, 4, 1), date(2026, 7, 1)
+    result = backfill(
+        ["production"], {"production": ["EIC_X"]}, first, last,
+        root=tmp_path, session=session, pause_seconds=0,
+    )
+    assert result[0]["status"] == "incomplete"
+    assert result[0]["missing_quarter_hours"] > 0
+    result = backfill(
+        ["production"], {"production": ["EIC_X"]}, first, last,
+        root=tmp_path, session=session, pause_seconds=0,
+    )
+    assert result[0]["status"] == "incomplete"
+    assert len(session.calls) == 2
+
+
+def test_no_file_for_empty_quarter(tmp_path: Path):
     session = FakeSession([])
-    result = backfill(["imbalance_prices"], {"imbalance_prices": ["X"]},
-                      date(2026, 6, 24), date(2026, 6, 25),
-                      root=tmp_path, session=session, pause_seconds=0)
-    assert result[0]["status"] == "empty"
-    assert result[0]["complete_time_axis"] is False
+    with pytest.raises(ValueError, match="Empty eSett quarter"):
+        backfill(
+            ["imbalance_prices"], {"imbalance_prices": ["X"]},
+            date(2026, 4, 1), date(2026, 7, 1),
+            root=tmp_path, session=session, pause_seconds=0,
+        )
+    assert not list(tmp_path.rglob("*.json"))
+
+
+def test_quarter_with_spring_dst_has_one_hour_fewer_slots():
+    audit = check_window([], date(2025, 1, 1), date(2025, 4, 1))
+    assert audit["expected_quarter_hours"] == 90 * 96 - 4
+    assert audit["complete_time_axis"] is False
+
+
+def test_provider_error_fails_without_daily_fallback(tmp_path: Path):
+    class BadSession(FakeSession):
+        def get(self, url, params=None, timeout=None):
+            self.calls.append((url, params, timeout))
+            return FakeResponse([], status_code=400)
+
+    session = BadSession([])
+    with pytest.raises(RuntimeError, match="No smaller requests were made"):
+        backfill(
+            ["production"], {"production": ["EIC_X"]},
+            date(2026, 4, 1), date(2026, 7, 1),
+            root=tmp_path, session=session, pause_seconds=0,
+        )
+    assert len(session.calls) == 1
+    assert not list(tmp_path.rglob("*.json"))
 
 
 def test_mga_discovery_for_load_profiles():

@@ -156,9 +156,16 @@ def utc_timestamps(rows: list[dict]) -> list[datetime]:
         value = record.get("timestampUTC")
         if not value:
             raise ValueError(f"Row {i} has no timestampUTC: {str(record)[:200]}")
-        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        try:
+            parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            try:
+                parsed = datetime.strptime(str(value), "%d.%m.%Y/%H:%M")
+            except ValueError as exc:
+                raise ValueError(f"Row {i} has unknown timestampUTC format: {value}") from exc
+        # The field is explicitly UTC in the eSett schema, even when no offset is encoded.
         if parsed.tzinfo is None:
-            raise ValueError(f"Row {i} has naive UTC timestamp: {value}")
+            parsed = parsed.replace(tzinfo=timezone.utc)
         result.append(parsed.astimezone(timezone.utc))
     return result
 

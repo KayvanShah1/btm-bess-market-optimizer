@@ -195,3 +195,20 @@ def test_mga_discovery_for_load_profiles():
     url, params, _ = session.calls[0]
     assert url.endswith("/EXP03/MeteringGridAreas")
     assert params == {"mba": "MY_EIC"}
+
+def test_missing_requested_mba_cannot_be_cached_as_complete(tmp_path: Path):
+    first, last = date(2026, 4, 1), date(2026, 7, 1)
+    # All timestamps exist for one of two requested areas. This is incomplete.
+    session = FakeSession(complete_quarter_rows(first, last, "X"))
+    result = backfill(
+        ["production"], {"production": ["EIC_X", "EIC_Y"]}, first, last,
+        root=tmp_path, session=session, pause_seconds=0,
+    )
+    assert result[0]["complete_time_axis"] is False
+    assert result[0]["all_requested_mbas_present_by_count"] is False
+    assert result[0]["status"] == "incomplete"
+    assert check_window(
+        complete_quarter_rows(first, last, "X"), first, last,
+        expected_mba_count=2,
+    )["response_mba_count"] == 1
+

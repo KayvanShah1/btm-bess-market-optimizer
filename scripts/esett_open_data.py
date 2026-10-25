@@ -243,7 +243,9 @@ def quarter_file(root: Path, dataset: str, first: date) -> Path:
     return root / dataset / f"{first.year}-Q{quarter}.json"
 
 
-def check_window(rows: list[dict], start: date, end_exclusive: date) -> dict:
+def check_window(
+    rows: list[dict], start: date, end_exclusive: date, *, expected_mba_count: int | None = None
+) -> dict:
     """Audit 15-minute UTC coverage for a full Swedish calendar quarter.
 
     Multiple MGAs may share a timestamp; row count is not a coverage count.
@@ -263,10 +265,14 @@ def check_window(rows: list[dict], start: date, end_exclusive: date) -> dict:
         label = str(row.get("mba") or "(missing MBA label)")
         by_mba.setdefault(label, set()).add(timestamp)
 
+    all_areas_present = expected_mba_count is None or len(by_mba) == expected_mba_count
     return {
         "start_local": start.isoformat(),
         "end_exclusive_local": end_exclusive.isoformat(),
         "row_count": len(rows),
+        "expected_mba_count": expected_mba_count,
+        "response_mba_count": len(by_mba),
+        "all_requested_mbas_present_by_count": all_areas_present,
         "expected_quarter_hours": expected,
         "distinct_quarter_hours": observed,
         "missing_quarter_hours": expected - observed,
@@ -277,7 +283,7 @@ def check_window(rows: list[dict], start: date, end_exclusive: date) -> dict:
             }
             for mba, instants in sorted(by_mba.items())
         },
-        "complete_time_axis": bool(rows) and observed == expected and all(
+        "complete_time_axis": bool(rows) and all_areas_present and observed == expected and all(
             len(instants) == expected for instants in by_mba.values()
         ),
     }
@@ -346,7 +352,7 @@ def backfill(
                 ) from exc
             if not rows:
                 raise ValueError(f"Empty eSett quarter: {dataset} {path.stem}; no file written")
-            audit = check_window(rows, first, last)
+            audit = check_window(rows, first, last, expected_mba_count=len(codes))
             document = {
                 "source": API + ROUTES[dataset][1],
                 "dataset": dataset,

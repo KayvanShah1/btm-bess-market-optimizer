@@ -166,7 +166,7 @@ def load_raw(root: Path, start: date, end: date) -> tuple[dict, dict]:
             for line, row in enumerate(read_csv(path), 2):
                 try:
                     timestamp = to_utc(row)
-                    if not (start <= timestamp.date() < end):
+                    if not (start - timedelta(days=1) <= timestamp.date() <= end):
                         continue
                     values = transform(family, row)
                     if values is None:

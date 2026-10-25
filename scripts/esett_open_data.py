@@ -93,6 +93,13 @@ def swedish_mba_codes(groups: list[dict]) -> list[str]:
     return sorted(set(codes))
 
 
+def metering_grid_areas(mba: str, session: requests.Session | None = None) -> list[dict]:
+    """Discover MGA codes for a selected MBA when load-profile requests are too large."""
+    if not mba.strip():
+        raise ValueError("Supply an MBA EIC code")
+    return _get(session or new_session(), "/EXP03/MeteringGridAreas", {"mba": mba})
+
+
 def local_day_window(day: date) -> tuple[datetime, datetime]:
     """Swedish local day to UTC, correctly handling 92/96/100 DST slots."""
     start = datetime(day.year, day.month, day.day, tzinfo=STOCKHOLM)

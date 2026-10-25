@@ -126,6 +126,13 @@ Open [http://localhost:8501](http://localhost:8501).
 - [Implementation notes](docs/IMPLEMENTATION_NOTES.md)
 - [Dashboard notes](apps/dashboard/README.md)
 
+
+## eSett historical source retrieval
+
+The four existing eSett exports (production, consumption, load profiles, and imbalance prices) can be retrieved from eSett's public Open Data REST API. Test the source-aware downloader in [the Jupyter notebook](notebooks/esett_open_data_backfill.ipynb). Its reusable Python implementation is [bess_optimizer/data/esett_api.py](bess_optimizer/src/bess_optimizer/data/esett_api.py), with a lightweight command-line wrapper at [scripts/esett_open_data.py](scripts/esett_open_data.py).
+
+The notebook starts with MBA/EIC-code discovery and an **in-memory one-day smoke test**, then provides an **opt-in, resumable two-year backfill**. Historical retrieval sends one full-quarter API request per dataset, with all selected Swedish MBAs included, and stores **four consolidated JSON files per dataset per year**. The downloader does not silently fall back to daily requests if the provider rejects a quarter. Raw API observations remain separate from the BESS model input tables; market-level load is not site-metered load, and imbalance prices are not day-ahead spot or reserve settlement data. See [historical data guidance](docs/history/ESETT_API.md) for details.
+
 ## AI Tools Used
 
 I used OpenAI ChatGPT and Codex as support tools during this project. They were used for the following purposes:

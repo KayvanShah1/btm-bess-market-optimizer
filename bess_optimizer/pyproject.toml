@@ -10,6 +10,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.2",
     "rich>=14.2.0",
+    "requests>=2.32,<3",
 ]
 
 [project.scripts]

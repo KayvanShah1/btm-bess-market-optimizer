@@ -114,35 +114,43 @@ def iso_utc(value: datetime) -> str:
 
 def fetch_range(
     dataset: str,
-    mba: str,
+    mba: str | list[str],
     start_utc: datetime,
     end_utc: datetime,
     session: requests.Session | None = None,
     *,
     mga: str | None = None,
 ) -> list[dict]:
-    """Fetch raw JSON rows for one MBA and an explicit UTC window."""
+    """Fetch one full UTC window, with one query parameter per requested MBA."""
     if dataset not in ROUTES:
         raise ValueError(f"Unknown dataset: {dataset}")
-    if not mba.strip():
-        raise ValueError("Supply an MBA EIC code from the relevant MBAOptions endpoint")
+    mbas = [mba] if isinstance(mba, str) else list(mba)
+    if not mbas or any(not isinstance(code, str) or not code.strip() for code in mbas):
+        raise ValueError("Supply MBA EIC codes from the matching MBAOptions endpoint")
+    if len(set(mbas)) != len(mbas):
+        raise ValueError("MBA EIC codes must be unique")
     if start_utc.tzinfo is None or end_utc.tzinfo is None or end_utc <= start_utc:
         raise ValueError("Supply timezone-aware datetimes with start before end")
     if mga and dataset != "load_profile":
         raise ValueError("mga filtering applies only to load_profile")
-    params = {
-        "start": iso_utc(start_utc),
-        "end": iso_utc(end_utc),
-        "mba": mba,
-    }
+
+    base_params = {"start": iso_utc(start_utc), "end": iso_utc(end_utc)}
+    if len(mbas) == 1:
+        params = {**base_params, "mba": mbas[0]}
+    else:
+        # The eSett API supports repeated MBA query parameters. Avoid one HTTP
+        # call per area when requesting a full quarterly source partition.
+        params = list(base_params.items()) + [("mba", code) for code in mbas]
     if mga:
-        params["mga"] = mga
+        if isinstance(params, dict):
+            params["mga"] = mga
+        else:
+            params.append(("mga", mga))
     rows = _get(session or new_session(), ROUTES[dataset][1], params)
     for index, record in enumerate(rows):
         if not isinstance(record, dict):
             raise ValueError(f"Unexpected non-object response row {index}")
     return rows
-
 
 def fetch_day(
     dataset: str,
@@ -201,10 +209,78 @@ def check_day(rows: list[dict], day: date) -> dict:
     }
 
 
-def _partition_file(root: Path, dataset: str, mba: str, day: date, mga: str | None) -> Path:
-    safe_mba = re.sub(r"[^A-Za-z0-9_-]", "_", mba)
-    safe_mga = "" if mga is None else "_" + re.sub(r"[^A-Za-z0-9_-]", "_", mga)
-    return root / dataset / f"mba={safe_mba}{safe_mga}" / f"{day.isoformat()}.json"
+def _next_quarter(day: date) -> date:
+    """First day of the quarter immediately following a calendar date."""
+    quarter_month = ((day.month - 1) // 3) * 3 + 1
+    if quarter_month == 10:
+        return date(day.year + 1, 1, 1)
+    return date(day.year, quarter_month + 3, 1)
+
+
+def _require_quarter_boundary(day: date) -> None:
+    if day.day != 1 or day.month not in (1, 4, 7, 10):
+        raise ValueError(
+            f"Expected calendar quarter boundary (Jan/Apr/Jul/Oct 1), got {day}. "
+            "Use fetch_day() for a single-day smoke test."
+        )
+
+
+def quarter_windows(start: date, end_exclusive: date):
+    """Consecutive [start, end) calendar quarters, without partial files."""
+    _require_quarter_boundary(start)
+    _require_quarter_boundary(end_exclusive)
+    if end_exclusive <= start:
+        raise ValueError("end_exclusive must be after start")
+    current = start
+    while current < end_exclusive:
+        stop = _next_quarter(current)
+        yield current, stop
+        current = stop
+
+
+def quarter_file(root: Path, dataset: str, first: date) -> Path:
+    quarter = (first.month - 1) // 3 + 1
+    return root / dataset / f"{first.year}-Q{quarter}.json"
+
+
+def check_window(rows: list[dict], start: date, end_exclusive: date) -> dict:
+    """Audit 15-minute UTC coverage for a full Swedish calendar quarter.
+
+    Multiple MGAs may share a timestamp; row count is not a coverage count.
+    MBA labels in returned rows may differ from requested EIC codes.
+    """
+    begin, _ = local_day_window(start)
+    stop, _ = local_day_window(end_exclusive)
+    expected = int((stop - begin).total_seconds() // 900)
+    timestamps = utc_timestamps(rows)
+    if any(timestamp < begin or timestamp >= stop for timestamp in timestamps):
+        raise ValueError("API returned observations outside the requested quarter")
+    if any(t.minute % 15 or t.second or t.microsecond for t in timestamps):
+        raise ValueError("API returned timestamps not aligned to 15-minute intervals")
+    observed = len(set(timestamps))
+    by_mba: dict[str, set[datetime]] = {}
+    for row, timestamp in zip(rows, timestamps):
+        label = str(row.get("mba") or "(missing MBA label)")
+        by_mba.setdefault(label, set()).add(timestamp)
+
+    return {
+        "start_local": start.isoformat(),
+        "end_exclusive_local": end_exclusive.isoformat(),
+        "row_count": len(rows),
+        "expected_quarter_hours": expected,
+        "distinct_quarter_hours": observed,
+        "missing_quarter_hours": expected - observed,
+        "coverage_by_response_mba": {
+            mba: {
+                "distinct_quarter_hours": len(instants),
+                "missing_quarter_hours": expected - len(instants),
+            }
+            for mba, instants in sorted(by_mba.items())
+        },
+        "complete_time_axis": bool(rows) and observed == expected and all(
+            len(instants) == expected for instants in by_mba.values()
+        ),
+    }
 
 
 def backfill(
@@ -219,65 +295,95 @@ def backfill(
     pause_seconds: float = 0.3,
     session: requests.Session | None = None,
 ) -> list[dict]:
-    """Daily, resumable, source-preserving backfill; end date is exclusive.
+    """One HTTP request per dataset/quarter, all selected MBAs in one file.
 
-    Each partition stores source JSON + request/coverage metadata.
-    Failed requests raise without creating a fake completed partition.
+    Exactly four output partitions per full calendar year per dataset.
+    A provider error aborts the quarter instead of silently fragmenting into
+    more API requests. Cached quarters are reused only if their requested
+    area selection matches and coverage is complete.
     """
-    if end_exclusive <= start:
-        raise ValueError("end_exclusive must be after start")
+    windows = list(quarter_windows(start, end_exclusive))
     if pause_seconds < 0:
         raise ValueError("pause_seconds must be nonnegative")
+    if mga and datasets != ["load_profile"]:
+        raise ValueError("MGA filtering requires only the load_profile dataset")
     session = session or new_session()
     manifests = []
     for dataset in datasets:
         if dataset not in ROUTES:
             raise ValueError(f"Unknown dataset: {dataset}")
-        codes = mba_by_dataset.get(dataset, [])
+        codes = list(mba_by_dataset.get(dataset, []))
         if not codes:
             raise ValueError(f"No MBA codes configured for {dataset}")
-        day = start
-        while day < end_exclusive:
-            for mba in codes:
-                path = _partition_file(root, dataset, mba, day, mga if dataset == "load_profile" else None)
-                if path.exists() and not overwrite:
-                    manifests.append({"dataset": dataset, "mba": mba, "day": str(day), "status": "cached",
-                                      "path": str(path)})
+        for first, last in windows:
+            path = quarter_file(root, dataset, first)
+            if path.exists() and not overwrite:
+                cached = json.loads(path.read_text(encoding="utf-8"))
+                if (cached.get("requested_mba_eic_codes") == codes
+                    and cached.get("mga") == (mga if dataset == "load_profile" else None)
+                    and cached.get("start_local") == first.isoformat()
+                    and cached.get("end_exclusive_local") == last.isoformat()
+                    and cached.get("audit", {}).get("complete_time_axis")):
+                    manifests.append({
+                        "dataset": dataset, "quarter": path.stem,
+                        "status": "cached", "path": str(path), **cached["audit"],
+                    })
                     continue
-                start_utc, end_utc = local_day_window(day)
-                rows = fetch_range(dataset, mba, start_utc, end_utc, session,
-                                   mga=mga if dataset == "load_profile" else None)
-                audit = check_day(rows, day)
-                document = {
-                    "source": API + ROUTES[dataset][1],
-                    "dataset": dataset,
-                    "mba_eic": mba,
-                    "mga": mga if dataset == "load_profile" else None,
-                    "start_utc": iso_utc(start_utc),
-                    "end_utc_exclusive": iso_utc(end_utc),
-                    "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
-                    "audit": audit,
-                    "records": rows,
-                }
-                path.parent.mkdir(parents=True, exist_ok=True)
-                temporary = path.with_suffix(".json.tmp")
-                temporary.write_text(json.dumps(document, ensure_ascii=False, indent=2),
-                                     encoding="utf-8")
-                temporary.replace(path)
-                manifest = {"dataset": dataset, "mba": mba, "day": str(day),
-                            "status": "downloaded" if rows else "empty", "path": str(path), **audit}
-                manifests.append(manifest)
-                print(f"{dataset:16} {mba:18} {day} rows={len(rows):5} "
-                      f"quarters={audit['distinct_quarter_hours']}/{audit['expected_quarter_hours']}")
-                time.sleep(pause_seconds)
-            day += timedelta(days=1)
+            start_utc, _ = local_day_window(first)
+            stop_utc, _ = local_day_window(last)
+            # A full quarter, all MBAs, in *one* API call. Never fall back to
+            # daily/monthly requests without explicit design approval.
+            try:
+                rows = fetch_range(
+                    dataset, codes, start_utc, stop_utc, session,
+                    mga=mga if dataset == "load_profile" else None,
+                )
+            except requests.HTTPError as exc:
+                raise RuntimeError(
+                    f"eSett rejected {dataset} {path.stem} as one request "
+                    f"for {len(codes)} MBA(s): {exc}. No smaller requests were made. "
+                    "Check provider query/row limits or reduce the chosen MBA set."
+                ) from exc
+            if not rows:
+                raise ValueError(f"Empty eSett quarter: {dataset} {path.stem}; no file written")
+            audit = check_window(rows, first, last)
+            document = {
+                "source": API + ROUTES[dataset][1],
+                "dataset": dataset,
+                "requested_mba_eic_codes": codes,
+                "mga": mga if dataset == "load_profile" else None,
+                "start_local": first.isoformat(),
+                "end_exclusive_local": last.isoformat(),
+                "start_utc": iso_utc(start_utc),
+                "end_utc_exclusive": iso_utc(stop_utc),
+                "retrieved_at_utc": datetime.now(timezone.utc).isoformat(),
+                "audit": audit,
+                "records": rows,
+            }
+            path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(
+                json.dumps(document, ensure_ascii=False, separators=(",", ":")),
+                encoding="utf-8",
+            )
+            temporary.replace(path)
+            status = "downloaded" if audit["complete_time_axis"] else "incomplete"
+            manifests.append({
+                "dataset": dataset, "quarter": path.stem,
+                "status": status, "path": str(path), **audit,
+            })
+            print(
+                f"{dataset:16} {path.stem} MBAs={len(codes):2} "
+                f"rows={len(rows):6}  quarters="
+                f"{audit['distinct_quarter_hours']}/{audit['expected_quarter_hours']} [{status}]"
+            )
+            time.sleep(pause_seconds)
     return manifests
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Download eSett Open Data history by dataset and MBA")
     parser.add_argument("--dataset", choices=ROUTES.keys(), required=True)
-    parser.add_argument("--mba", required=True, help="MBA EIC code from the corresponding MBAOptions endpoint")
+    parser.add_argument("--mba", action="append", required=True, help="MBA EIC code; repeat --mba to query multiple MBAs together")
     parser.add_argument("--start", type=date.fromisoformat, required=True, help="Swedish local start day")
     parser.add_argument("--end-exclusive", type=date.fromisoformat, required=True, help="Swedish local end day")
     parser.add_argument("--root", type=Path, default=Path("data/history/source/esett"))
@@ -285,11 +391,12 @@ def main() -> None:
     parser.add_argument("--mga", help="Optional MGA EIC code for load_profile")
     args = parser.parse_args()
     results = backfill(
-        [args.dataset], {args.dataset: [args.mba]}, args.start, args.end_exclusive,
+        [args.dataset], {args.dataset: args.mba}, args.start, args.end_exclusive,
         root=args.root, mga=args.mga, overwrite=args.overwrite,
     )
     print(json.dumps({"partitions": len(results), "downloaded": sum(
-        r["status"] == "downloaded" for r in results)}, indent=2))
+        r["status"] == "downloaded" for r in results),
+        "incomplete": sum(r["status"] == "incomplete" for r in results)}, indent=2))
 
 
 if __name__ == "__main__":

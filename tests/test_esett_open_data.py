@@ -13,6 +13,7 @@ from scripts.esett_open_data import (
     fetch_day,
     local_day_window,
     mba_options,
+    metering_grid_areas,
     swedish_mba_codes,
     utc_timestamps,
 )
@@ -105,3 +106,12 @@ def test_no_empty_success_fake_coverage(tmp_path: Path):
                       root=tmp_path, session=session, pause_seconds=0)
     assert result[0]["status"] == "empty"
     assert result[0]["complete_time_axis"] is False
+
+
+def test_mga_discovery_for_load_profiles():
+    session = FakeSession([{"mgaCode": "GRID-A", "mba": "MY_EIC"}])
+    result = metering_grid_areas("MY_EIC", session)
+    assert result[0]["mgaCode"] == "GRID-A"
+    url, params, _ = session.calls[0]
+    assert url.endswith("/EXP03/MeteringGridAreas")
+    assert params == {"mba": "MY_EIC"}

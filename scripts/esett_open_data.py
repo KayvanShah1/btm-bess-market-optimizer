@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -265,6 +264,9 @@ def check_window(
         label = str(row.get("mba") or "(missing MBA label)")
         by_mba.setdefault(label, set()).add(timestamp)
 
+    # Some API responses use display names rather than the requested EIC codes.
+    # Count the distinct reported MBAs rather than assuming the labels match.
+    # A source returning fewer areas than requested must never be marked cached.
     all_areas_present = expected_mba_count is None or len(by_mba) == expected_mba_count
     return {
         "start_local": start.isoformat(),

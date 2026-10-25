@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 pytest.importorskip("requests")
-from scripts.esett_open_data import (
+from bess_optimizer.data.esett_api import (
     ROUTES,
     backfill,
     check_day,

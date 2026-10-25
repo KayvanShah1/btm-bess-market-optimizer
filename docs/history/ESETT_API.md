@@ -33,7 +33,7 @@ The same downloader can be used from Python:
 
 ```python
 from datetime import date
-from scripts.esett_open_data import new_session, mba_options, swedish_mba_codes, fetch_day, backfill
+from bess_optimizer.data.esett_api import new_session, mba_options, swedish_mba_codes, fetch_day, backfill
 
 session = new_session()
 print(mba_options("production", session))
